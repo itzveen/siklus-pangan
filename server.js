@@ -30,7 +30,7 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const API_KEY = process.env.VITE_GEMINI_API_KEY || '';
+const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 const MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
