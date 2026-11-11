@@ -1,0 +1,279 @@
+{
+  "info": {
+    "name": "EatWise (SiklusPangan) Backend & AI REST API",
+    "description": "Koleksi Lengkap 19 Endpoint REST API Backend & AI untuk EatWise (SiklusPangan) - LOGICODIX 2026. Sudah dilengkapi automated test script (pm.test) untuk Postman Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('HTTP Status 200/201 OK', function () {",
+          "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+          "});",
+          "pm.test('Response memiliki format JSON valid (status: ok)', function () {",
+          "    var jsonData = pm.response.json();",
+          "    pm.expect(jsonData).to.be.an('object');",
+          "    pm.expect(jsonData.error).to.be.undefined;",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth, Profile & Pengaturan",
+      "item": [
+        {
+          "name": "POST Login Google OAuth",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/google",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi\",\n  \"fullName\": \"Budi Santoso\",\n  \"email\": \"budi@gmail.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET User Profile & Pengaturan",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/profile"
+          }
+        },
+        {
+          "name": "PUT Update Preferensi Hunian & Jam Notifikasi Pengingat",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"householdType\": \"apartment\",\n  \"notificationHour\": \"08:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Logout Akun",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Tanya AI (2 Topik), Scan Struk & Riwayat Chat",
+      "item": [
+        {
+          "name": "GET 2 Pilihan Topik Tanya AI",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/ai/topics"
+          }
+        },
+        {
+          "name": "POST AI Scan Struk / Makanan",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/ai/scan",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"base64Data\": \"dummy_base64\",\n  \"mimeType\": \"image/jpeg\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Tanya AI: Resep Bahan Hampir Basi (Auto-Sent One-Shot)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/ai/rescue-recipe",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"name\": \"Bayam Hijau\", \"expiryDays\": 1 },\n    { \"name\": \"Telur Ayam\", \"expiryDays\": 2 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Tanya AI: Olah Bahan Basi Jadi Kompos (Auto-Sent One-Shot)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/ai/compost-guide",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodName\": \"Tahu Putih\",\n  \"householdType\": \"house\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET Daftar Riwayat Chat AI",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/ai/history"
+          }
+        },
+        {
+          "name": "GET Detail 1 Riwayat Chat AI",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/ai/history/chat-1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Kulkas, Catat Stok Sendiri & Rescue Masakan",
+      "item": [
+        {
+          "name": "GET Semua Stok Kulkas & Reward Impact Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/foods"
+          }
+        },
+        {
+          "name": "POST Catat Stok Sendiri: Bahan Mentah",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/foods",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stockType\": \"raw\",\n  \"name\": \"Wortel Brastagi\",\n  \"category\": \"vegetable\",\n  \"categoryLabel\": \"Sayur & Buah\",\n  \"quantity\": 3,\n  \"unit\": \"buah\",\n  \"storage\": \"chiller\",\n  \"expiryDays\": 5,\n  \"weightKg\": 0.3,\n  \"notes\": \"Beli di pasar pagi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Catat Stok Sendiri: Masakan Sisa",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/foods",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stockType\": \"leftover\",\n  \"name\": \"Ayam Goreng Sisa Semalam\",\n  \"category\": \"leftover\",\n  \"categoryLabel\": \"Masakan Sisa\",\n  \"quantity\": 2,\n  \"unit\": \"porsi\",\n  \"cookedDate\": \"2026-11-11\",\n  \"cookedTime\": \"19:30\",\n  \"storage\": \"chiller\",\n  \"expiryDays\": 2,\n  \"weightKg\": 0.25,\n  \"notes\": \"Panaskan sebelum disajikan\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Simpan Bahan Terpilih Hasil Scan Struk",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/foods/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"name\": \"Sari Roti Krim Keju\", \"category\": \"carb\", \"expiryDays\": 4, \"weightKg\": 0.072 },\n    { \"name\": \"Cimory Yogurt Mix Berry\", \"category\": \"other\", \"expiryDays\": 7, \"weightKg\": 0.225 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH Masakan Selesai & Dihabiskan (Tambah Reward Impact)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/foods/food-1/cook"
+          }
+        },
+        {
+          "name": "PATCH Tandai Bahan Basi / Alihkan ke Kompos",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/foods/food-3/spoil"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Siklus Kompos, Panen & Notifikasi",
+      "item": [
+        {
+          "name": "GET Daftar Batch Kompos & Riwayat Panen",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/compost/batches"
+          }
+        },
+        {
+          "name": "POST Simpan Bahan Basi ke Wadah Kompos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/compost/add-item",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodId\": \"food-4\",\n  \"foodName\": \"Tahu Putih\",\n  \"weightKg\": 0.3,\n  \"batchId\": \"batch-1\",\n  \"option\": \"existing\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Kunci Wadah & Mulai Pematangan 14 Hari",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/compost/batch-1/lock"
+          }
+        },
+        {
+          "name": "POST Simulasi Demo: Lompat 14 Hari (Siap Panen)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/compost/batch-2/simulate"
+          }
+        },
+        {
+          "name": "POST Catat Panen Pupuk Kompos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/compost/batch-2/harvest",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weightKg\": 3.5\n}"
+            }
+          }
+        },
+        {
+          "name": "GET Lihat Detail Panen Kompos (Reward & Cara Pakai)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/compost/harvests/batch-0"
+          }
+        },
+        {
+          "name": "GET Daftar Notifikasi Pengingat Harian",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notifications"
+          }
+        },
+        {
+          "name": "PATCH Tandai Semua Notifikasi Dibaca",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/notifications/read-all"
+          }
+        },
+        {
+          "name": "POST Reset Seluruh Data Demo",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reset"
+          }
+        }
+      ]
+    }
+  ]
+}

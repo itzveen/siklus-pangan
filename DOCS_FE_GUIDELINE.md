@@ -1,123 +1,67 @@
-# 📘 PANDUAN PENGEMBANGAN FRONTEND (FE GUIDELINE)
-**Proyek:** SiklusPangan (Logicodix 2026)  
-**Dokumen ini ditujukan untuk:** Rekan Pengembang Frontend (FE) & UI Slicer.
+# 🔌 Panduan Integrasi Frontend & Kontrak API — EatWise (`SiklusPangan`)
+
+Dokumen ini adalah panduan resmi dari **Backend & AI Engineer** untuk tim **Frontend** dalam menyambungkan UI sesuai desain Figma **EatWise**.
 
 ---
 
-## 📂 1. Struktur Folder Proyek
+## 📌 Opsi Cara Koneksi (Pilih Salah Satu)
 
-```text
-siklus-pangan/
-├── public/                 # Favicon dan aset statis
-├── src/
-│   ├── assets/             # Logo, icon, gambar
-│   ├── components/         # Komponen UI modular
-│   │   ├── Navbar.jsx          # Header profil & alert badge
-│   │   ├── BottomNav.jsx       # 4 tab navigasi bawah
-│   │   ├── FoodCard.jsx        # Kartu bahan (Hijau, Kuning, Merah)
-│   │   ├── ScanModal.jsx       # Modal scan struk & foto kulkas (AI)
-│   │   ├── ManualInputModal.jsx# Modal tambah manual masakan sisa
-│   │   ├── RecipeModal.jsx     # Modal resep penyelamat (AI)
-│   │   ├── CompostModal.jsx    # Modal olah kompos & toggle batch
-│   │   └── ImpactWidget.jsx    # Counter kg terselamatkan & emisi CO2
-│   ├── pages/              # Halaman / Tampilan Tab
-│   │   ├── PantryPage.jsx      # Halaman utama stok kulkas
-│   │   ├── ChatPage.jsx        # Halaman Tanya AI & riwayat chat
-│   │   ├── CompostPage.jsx     # Halaman manajemen batch kompos
-│   │   └── SettingsPage.jsx    # Halaman profil, preferensi & tombol demo
-│   ├── services/           # Logika AI & Data
-│   │   ├── geminiService.js    # Fungsi pemanggil Google Gemini API
-│   │   └── storageService.js   # Helper simpan/ambil LocalStorage
-│   ├── App.jsx             # Root component & state global
-│   ├── index.css           # Konfigurasi Tailwind CSS
-│   └── main.jsx            # Entry point React
-├── .env.example            # Contoh template konfigurasi API key
-├── README.md               # Dokumentasi resmi proyek untuk dewan juri
-└── package.json
-```
+### Cara A: Via REST API Server (Localhost / Vercel)
+* **Base URL Lokal:** `http://localhost:3000/api` (jalankan `npm run api`)
+* **Base URL Vercel:** `https://<nama-project-vercel>.vercel.app/api`
+* **File Postman:** Import file [`EatWise_Postman_Collection.json`](./EatWise_Postman_Collection.json) langsung ke aplikasi Postman untuk menguji seluruh 19 endpoint.
+
+### Cara B: Import Service Langsung (Jika FE di Repo React Ini)
+* Import fungsi langsung dari [`src/services/storageService.js`](./src/services/storageService.js) dan [`src/services/geminiService.js`](./src/services/geminiService.js).
 
 ---
 
-## 💾 2. Skema Data di LocalStorage
+## 📋 Daftar Endpoint REST API (Sesuai Flow Figma)
 
-Untuk memudahkan kita bekerja tanpa backend server, seluruh data disimpan di `localStorage` dengan format JSON yang rapi:
-
-### A. Data Bahan Makanan (`siklus_foods`)
-```json
-[
-  {
-    "id": "food-1",
-    "name": "Bayam Hijau",
-    "category": "vegetable", // vegetable | fruit | meat | leftover | seasoning
-    "storage": "chiller",    // chiller | freezer | room
-    "expiryDays": 1,         // sisa hari sebelum kadaluwarsa
-    "addedAt": "2026-11-10",
-    "status": "warning"      // safe (hijau) | warning (kuning) | spoiled (merah)
-  },
-  {
-    "id": "food-2",
-    "name": "Tahu Putih Sutra",
-    "category": "vegetable",
-    "storage": "chiller",
-    "expiryDays": 0,
-    "addedAt": "2026-11-08",
-    "status": "spoiled"
-  }
-]
-```
-
-### B. Data Batch Kompos (`siklus_compost_batches`)
-```json
-[
-  {
-    "id": "batch-1",
-    "title": "Kompos Ember Dapur #1",
-    "stage": "filling",      // filling (fase pengisian) | curing (pematangan) | ready (matang)
-    "fillPercentage": 60,
-    "startedAt": "2026-11-05",
-    "curingDaysLeft": 14,
-    "logs": [
-      { "date": "2026-11-05", "item": "Kulit wortel & pisang", "weightKg": 0.4 },
-      { "date": "2026-11-08", "item": "Tahu basi & ampas teh", "weightKg": 0.3 }
-    ]
-  }
-]
-```
+### 1. Autentikasi (Login Google OAuth) & Pengaturan
+| Method | Endpoint | Body JSON | Deskripsi (Layar Figma) |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/google` | `{"credential": "<JWT_GOOGLE>"}` atau `{"name": "Budi", "email": "budi@gmail.com"}` | Login dengan Google (`Landing Screen 8:10`). |
+| `POST` | `/api/auth/logout` | `{}` | Keluar dari Akun (`Dialog Logout 45:942`). |
+| `GET` | `/api/profile` | - | Ambil profil user, tipe hunian (`house`/`apartment`), dan jam pengingat (`Pengaturan 30:2902`). |
+| `PUT` | `/api/profile` | `{"householdType": "apartment", "notificationHour": "08:00"}` | Simpan preferensi hunian & jam notifikasi. |
 
 ---
 
-## 🤖 3. Cara Memanggil AI (`geminiService.js`)
+### 2. AI Services (Gemini Multimodal & One-Shot Auto-Sent)
+> **Catatan Penting Flow Figma (`Tanya AI 32:3707`):**  
+> Fitur Tanya AI **bukan** chat bebas bolak-balik. Saat user memilih bahan makanan, pertanyaan otomatis terkirim (`Terkirim otomatis`) dan balasan AI bersifat **one-shot read-only** (`Balasan AI ini tidak bisa dibalas lagi`), serta otomatis tersimpan ke **Riwayat Chat (`54:905`)**.
 
-AI digunakan pada 3 titik utama:
-1. **Scan Struk / Kulkas:** Mengirim gambar base64 $\rightarrow$ AI mengembalikan daftar bahan makanan dan otomatis memisahkan barang non-makanan (sabun, deterjen, tisu).
-2. **Resep Penyelamat:** Mengirim daftar bahan kritis (kuning) $\rightarrow$ AI meracik resep masakan rumahan 10 menit.
-3. **Panduan Kompos:** Mengirim nama bahan basi $\rightarrow$ AI menentukan metode kompos (misal: Takakura, Eco-Enzyme, POC) dan instruksi 3 langkah.
-
-> **Catatan Pengembang:** Di dalam `geminiService.js`, sudah disiapkan mode *Mock Fallback*. Jika API key belum diisi di `.env`, sistem tetap bisa berjalan normal menggunakan data simulasi cerdas agar proses koding antarmuka tidak terhambat!
-
----
-
-## 🌿 4. Aturan Git Commit (Sangat Penting untuk Penilaian Juri!)
-
-Guidebook mewajibkan riwayat komitmen (*commit history*) yang rapi dan orisinal. Gunakan format standar industri (**Conventional Commits**):
-
-* `feat: ...` $\rightarrow$ Untuk penambahan fitur baru  
-  *Contoh:* `feat: tambahkan modal scan struk belanja dengan AI`
-* `ui: ...` $\rightarrow$ Untuk styling tampilan / komponen antarmuka  
-  *Contoh:* `ui: perbaiki kartu bahan makanan berstatus kuning`
-* `fix: ...` $\rightarrow$ Untuk perbaikan bug  
-  *Contoh:* `fix: perbaiki toggle pemilihan batch kompos aktif`
-* `docs: ...` $\rightarrow$ Untuk pembaruan dokumentasi  
-  *Contoh:* `docs: lengkapi panduan instalasi localhost di README`
+| Method | Endpoint | Body JSON | Output Utama |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/ai/topics` | - | Mengambil 2 pilihan topik terpandu (`Resep dari bahan hampir basi` & `Olah bahan basi jadi kompos`) beserta daftar bahan yang relevan. |
+| `POST` | `/api/ai/scan` | `{"base64Data": "data:image/jpeg;base64,...", "mimeType": "image/jpeg"}` | Memisahkan `foodItems` (makanan + umur simpan hari) dan `ignoredItems` (non-makanan seperti plastik/sabun/tisu). |
+| `POST` | `/api/ai/rescue-recipe` | `{"items": [{"name": "Bayam Hijau", "expiryDays": 1}, {"name": "Telur Ayam", "expiryDays": 2}]}` | Menghasilkan 1 resep kilat (`introText`, `title`, `cookingTimeMinutes`, `steps`) + auto-masuk ke `/api/ai/history`. |
+| `POST` | `/api/ai/compost-guide` | `{"foodName": "Tahu Putih", "householdType": "house"}` | Menghasilkan panduan kompos 3 langkah sesuai tipe hunian + daftar wadah kompos tersedia + auto-masuk ke `/api/ai/history`. |
+| `GET` | `/api/ai/history` | - | Mengambil daftar riwayat percakapan AI (`HARI INI` & `KEMARIN`). |
+| `GET` | `/api/ai/history/:id` | - | Mengambil detail 1 percakapan riwayat AI (`chat-1`, dst.). |
 
 ---
 
-## 🏁 5. Urutan Pengerjaan Sprint FE (Step-by-Step)
+### 3. Stok Kulkas (Pantry) & Catat Stok Sendiri (Bahan Mentah & Masakan Sisa)
+| Method | Endpoint | Body JSON | Deskripsi (Layar Figma) |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/foods` | Query opsional: `?category=vegetable\|meat\|leftover` | Mengambil stok kulkas (`safe`, `warning`, `spoiled`) + metrik reward/impact (`rescuedFoodKg`, `compostedFoodKg`, `co2ePreventedKg`). |
+| `POST` | `/api/foods` | `{"stockType": "raw"\|"leftover", "name": "...", "category": "leftover", "quantity": 2, "unit": "porsi", "cookedDate": "2026-11-11", "cookedTime": "19:30", "storage": "chiller", "expiryDays": 2, "notes": "..."}` | Input Manual Bahan Mentah (`29:2621`) & Input Masakan Sisa (`58:132`). |
+| `POST` | `/api/foods/bulk` | `{"items": [...]}` | Simpan semua item tercentang dari hasil AI Scan (`22:1954`). |
+| `PATCH` | `/api/foods/:id/cook` | - | Tandai selesai dimasak & dihabiskan (`59:518`) — menambah statistik reward `rescuedFoodKg` & `co2ePreventedKg`. |
+| `PATCH` | `/api/foods/:id/spoil` | - | Tandai bahan sudah basi/lewat waktu (`61:514`). |
 
-1. **Tahap 1:** Pasang kerangka layout utama (Navbar atas, Bottom Navigation 4 tab, dan Container Card).
-2. **Tahap 2:** Buat daftar kartu stok kulkas dengan 3 warna (🟢 Hijau, 🟡 Kuning, 🔴 Merah) membaca dari data dummy lokal.
-3. **Tahap 3:** Integrasikan tombol aksi:
-   * Klik Kuning $\rightarrow$ Buka pop-up Resep Penyelamat.
-   * Klik Merah $\rightarrow$ Buka pop-up Alihkan ke Kompos (dengan toggle pilih batch aktif).
-4. **Tahap 4:** Sambungkan fungsi kamera/upload foto ke `geminiService.js`.
-5. **Tahap 5:** Tambahkan tombol developer `[⏩ Lompat 14 Hari]` di halaman Kompos untuk demonstrasi dewan juri.
+---
+
+### 4. Siklus Kompos (Smart Batching), Panen & Notifikasi
+| Method | Endpoint | Body JSON | Deskripsi (Layar Figma) |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/compost/batches` | - | Ambil daftar `activeBatches` (`Batch #1` filling, `Batch #2` curing) & `harvestHistory` (`Batch #0`). |
+| `POST` | `/api/compost/add-item` | `{"foodId": "food-4", "foodName": "Tahu Putih", "weightKg": 0.3, "batchId": "batch-1", "option": "existing"}` | Simpan bahan basi ke wadah kompos aktif atau buat batch baru (`32:3286`). |
+| `POST` | `/api/compost/:id/lock` | - | Kunci wadah & mulai pematangan 14 hari (`62:75`). |
+| `POST` | `/api/compost/:id/simulate` | - | **Tombol Demo Juri:** Lompat 14 hari pematangan hingga status `ready` (`32:3581`). |
+| `POST` | `/api/compost/:id/harvest` | `{"weightKg": 3.5}` | Catat panen pupuk kompos (`45:1108`) & pindahkan ke riwayat panen (`55:63`). |
+| `GET` | `/api/compost/harvests/:id` | - | Lihat detail riwayat panen kompos beserta log bahan & cara pakai (`Detail Riwayat Panen 55:63`). |
+| `GET` | `/api/notifications` | - | Ambil daftar notifikasi pengingat harian (`HARI INI` & `SEBELUMNYA`) + `unreadCount` (`43:195`). |
+| `PATCH` | `/api/notifications/read-all` | - | Tandai semua notifikasi sudah dibaca. |
