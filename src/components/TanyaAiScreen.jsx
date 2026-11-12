@@ -34,19 +34,42 @@ export default function TanyaAiScreen({
 
   const handleSelectRecipeTopic = async () => {
     if (isLoading) return;
-    setIsLoading(true);
 
+    // 1. If fridge has NO food recorded:
+    if (foodItems.length === 0) {
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'Tolong beri resep kilat dari bahan yang hampir basi di kulkasku.'
+      };
+      const aiMsg = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        type: 'empty_fridge',
+        title: 'Kulkas Masih Kosong',
+        text: `Kulkasmu saat ini masih kosong nih, ${user?.name || 'Budi'}! 🥦\n\nBelum ada stok bahan makanan yang tercatat di kulkas. Yuk scan struk belanja atau catat bahan makananmu terlebih dahulu agar aku bisa merekomendasikan resep penyelamat yang pas!`
+      };
+      setChatMessages([userMsg, aiMsg]);
+      return;
+    }
+
+    // 2. If fridge has items:
     const targetItems = criticalItems.length > 0
       ? criticalItems
-      : [{ name: 'Bayam Hijau', expiryDays: 1 }, { name: 'Telur Ayam', expiryDays: 2 }];
+      : foodItems.slice(0, 3);
 
+    const itemNames = targetItems.map(i => i.name).join(', ');
+
+    setIsLoading(true);
     const userMsg = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: `Tolong beri resep kilat dari bahan yang hampir basi: ${targetItems.map(i => i.name).join(', ')}.`
+      text: criticalItems.length > 0
+        ? `Tolong beri resep kilat untuk bahan yang hampir basi di kulkasku: ${itemNames}.`
+        : `Tolong rekomendasikan resep dari bahan yang ada di kulkasku: ${itemNames}.`
     };
 
-    setChatMessages(prev => [...prev, userMsg]);
+    setChatMessages([userMsg]);
 
     try {
       const recipe = await gemini.generateRescueRecipe(targetItems);
@@ -57,13 +80,13 @@ export default function TanyaAiScreen({
         data: recipe
       };
 
-      setChatMessages(prev => [...prev, aiMsg]);
+      setChatMessages([userMsg, aiMsg]);
 
       // Automatically persist to storage for Riwayat Chat
       store.addAiHistoryEntry({
         type: 'recipe',
         badge: 'Rescue Resep',
-        title: recipe.title || 'Sup Bening Bayam Telur Gurih',
+        title: recipe.title || 'Sup Bening Gurih Kilat',
         summary: recipe.introText || 'Resep penyelamat bahan makanan hampir basi siap dalam 12 menit.',
         prompt: userMsg.text,
         tags: targetItems.map(i => i.name),
@@ -79,19 +102,38 @@ export default function TanyaAiScreen({
 
   const handleSelectCompostTopic = async () => {
     if (isLoading) return;
-    setIsLoading(true);
 
+    // 1. If fridge is empty:
+    if (foodItems.length === 0) {
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'Bagaimana cara mengolah bahan makanan basi jadi kompos?'
+      };
+      const aiMsg = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        type: 'empty_fridge',
+        title: 'Tidak Ada Bahan Basi',
+        text: `Saat ini belum ada bahan makanan yang tercatat di kulkasmu, ${user?.name || 'Budi'}! ✨\n\nJika nanti ada bahan yang lewat tanggal kedaluwarsa atau sisa makanan yang rusak, tanyakan ke aku ya untuk panduan komposnya!`
+      };
+      setChatMessages([userMsg, aiMsg]);
+      return;
+    }
+
+    // 2. If fridge has spoiled or other items:
     const targetItem = spoiledItems.length > 0
       ? spoiledItems[0]
-      : { name: 'Tahu Putih Basi', category: 'plant_protein' };
+      : foodItems[0] || { name: 'Sisa Sayur & Nasi', category: 'vegetable' };
 
+    setIsLoading(true);
     const userMsg = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: `Bagaimana cara mengolah ${targetItem.name} yang sudah basi agar jadi kompos tanpa bau?`
     };
 
-    setChatMessages(prev => [...prev, userMsg]);
+    setChatMessages([userMsg]);
 
     try {
       const guide = await gemini.analyzeCompostAction(targetItem, user?.householdType || 'house');
@@ -102,7 +144,7 @@ export default function TanyaAiScreen({
         data: guide
       };
 
-      setChatMessages(prev => [...prev, aiMsg]);
+      setChatMessages([userMsg, aiMsg]);
 
       // Automatically persist to storage for Riwayat Chat
       store.addAiHistoryEntry({
@@ -138,6 +180,23 @@ export default function TanyaAiScreen({
 
     setChatMessages(prev => [...prev, userMsg]);
 
+    // Check if asking for recipes while fridge has 0 items
+    const isAskingRecipe = /resep|masak|bikin|olah/i.test(text);
+    if (isAskingRecipe && foodItems.length === 0) {
+      setTimeout(() => {
+        const aiMsg = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          type: 'empty_fridge',
+          title: 'Kulkas Masih Kosong',
+          text: `Di kulkasmu belum tercatat bahan makanan apapun nih. Yuk scan struk atau catat bahan makananmu di kulkas dulu agar resepnya sesuai dengan apa yang kamu punya!`
+        };
+        setChatMessages(prev => [...prev, aiMsg]);
+        setIsLoading(false);
+      }, 500);
+      return;
+    }
+
     try {
       const isCompost = /kompos|basi|busuk|tanah|biopori|takakura|bokashi|pupuk/i.test(text);
 
@@ -156,7 +215,8 @@ export default function TanyaAiScreen({
           data: guide
         });
       } else {
-        const recipe = await gemini.generateRescueRecipe([{ name: text }]);
+        const availableContext = foodItems.length > 0 ? foodItems : [{ name: text }];
+        const recipe = await gemini.generateRescueRecipe(availableContext);
         const aiMsg = { id: `ai-${Date.now()}`, sender: 'ai', type: 'recipe', data: recipe };
         setChatMessages(prev => [...prev, aiMsg]);
         store.addAiHistoryEntry({
@@ -239,21 +299,105 @@ export default function TanyaAiScreen({
         </button>
       </div>
 
-      {/* ── 4. Bot Greeting Bubble (Figma node 32:3819) ── */}
-      <div className="flex items-start gap-2.5 pt-1">
-        <div className="w-[32px] h-[32px] rounded-full bg-[#d5f7e0] flex items-center justify-center flex-shrink-0 mt-1">
-          <img src={aiSparkle} alt="AI Sparkle" className="w-[16px] h-[16px]" />
-        </div>
-        <div className="bg-white border border-[#ecfdf5] rounded-[22px] px-4 py-3 shadow-xs max-w-[290px]">
-          <p className="text-[13.5px] text-[#1b2e23] leading-relaxed">
-            Halo {user?.name || 'Budi'}! Mau aku bantu apa hari ini? Pilih salah satu di bawah ya.
-          </p>
-        </div>
-      </div>
+      {/* ── 4. Initial State: Bot Greeting Bubble & Topic Selection (ONLY shown when no chat active) ── */}
+      {chatMessages.length === 0 ? (
+        <div className="space-y-6 pt-1">
+          {/* Bot Greeting Bubble (Figma node 32:3819) */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-[32px] h-[32px] rounded-full bg-[#d5f7e0] flex items-center justify-center flex-shrink-0 mt-1">
+              <img src={aiSparkle} alt="AI Sparkle" className="w-[16px] h-[16px]" />
+            </div>
+            <div className="bg-white border border-[#ecfdf5] rounded-[22px] px-4 py-3 shadow-xs max-w-[290px]">
+              <p className="text-[13.5px] text-[#1b2e23] leading-relaxed">
+                Halo {user?.name || 'Budi'}! Mau aku bantu apa hari ini? Pilih salah satu di bawah ya.
+              </p>
+            </div>
+          </div>
 
-      {/* ── 5. Conversation Stream ── */}
-      {chatMessages.length > 0 && (
-        <div className="space-y-4 pt-2">
+          {/* Section "PILIH TOPIK" (Figma node 32:3826) */}
+          <div className="space-y-3 pt-2">
+            <h2 className="text-[12px] font-bold text-[#3d5045] tracking-[0.6px] uppercase">
+              PILIH TOPIK
+            </h2>
+
+            <div className="space-y-3">
+              {/* Card 1: Resep dari bahan hampir basi (Figma node 32:3830) */}
+              <button
+                type="button"
+                onClick={handleSelectRecipeTopic}
+                disabled={isLoading}
+                className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
+                    <img src={aiClock} alt="Resep" className="w-[20px] h-[20px]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#0e7f3d] text-[13.5px] leading-snug">
+                      Resep dari bahan hampir basi
+                    </h3>
+                    <p className="text-[#65796c] text-[12px] leading-snug mt-0.5">
+                      {foodItems.length === 0
+                        ? 'Kulkas kosong (0 bahan tercatat)'
+                        : criticalItems.length > 0
+                        ? `Ada ${criticalItems.length} bahan kritis di kulkasku`
+                        : 'Pilih bahan kritis, AI beri resep kilat'}
+                    </p>
+                  </div>
+                </div>
+                <img src={chatChevron} alt="→" className="w-[20px] h-[20px] opacity-70 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Card 2: Olah bahan basi jadi kompos (Figma node 32:3846) */}
+              <button
+                type="button"
+                onClick={handleSelectCompostTopic}
+                disabled={isLoading}
+                className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
+                    <img src={aiLeaf} alt="Kompos" className="w-[20px] h-[20px]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#0e7f3d] text-[13.5px] leading-snug">
+                      Olah bahan basi jadi kompos
+                    </h3>
+                    <p className="text-[#65796c] text-[12px] leading-snug mt-0.5">
+                      {spoiledItems.length > 0
+                        ? `Ada ${spoiledItems.length} bahan basi siap diolah`
+                        : 'Pilih bahan rusak, AI beri panduan kompos'}
+                    </p>
+                  </div>
+                </div>
+                <img src={chatChevron} alt="→" className="w-[20px] h-[20px] opacity-70 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+
+            {/* Security Notice */}
+            <div className="flex items-center justify-center gap-1.5 pt-2 text-[#65796c] text-[11.5px]">
+              <img src={aiLock} alt="Lock" className="w-[14px] h-[14px] opacity-80" />
+              <span>Tanya AI hanya menjawab seputar resep dan kompos</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── 5. Active Chat Conversation Stream (Replaces topic cards without duplicating) ── */
+        <div className="space-y-4 pt-1">
+          {/* Action header: back to topics */}
+          <div className="flex items-center justify-between pb-1">
+            <span className="text-[12px] font-bold text-[#3d5045] uppercase tracking-[0.5px]">
+              Percakapan Aktif
+            </span>
+            <button
+              type="button"
+              onClick={() => setChatMessages([])}
+              className="text-[12px] font-semibold text-[#0e7f3d] bg-[#d5f7e0] hover:bg-[#c2f2d1] px-3 py-1 rounded-full transition-all"
+            >
+              + Pilih Topik Lain
+            </button>
+          </div>
+
           {chatMessages.map((msg) => (
             <div
               key={msg.id}
@@ -274,7 +418,35 @@ export default function TanyaAiScreen({
                     : 'bg-white border border-[#cdebd3] text-[#1b2e23]'
                 }`}
               >
-                {msg.text && <p className="leading-relaxed">{msg.text}</p>}
+                {/* Empty Fridge Friendly Message with Quick Action */}
+                {msg.type === 'empty_fridge' && (
+                  <div className="space-y-3">
+                    <p className="leading-relaxed whitespace-pre-line text-[#1b2e23]">
+                      {msg.text}
+                    </p>
+                    <div className="pt-2 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={onOpenScan}
+                        className="w-full py-2 px-3 rounded-xl bg-[#0e7f3d] text-white font-bold text-[12.5px] hover:bg-[#0c6b33] active:scale-95 transition-all"
+                      >
+                        Scan Struk Belanja
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onOpenManual}
+                        className="w-full py-2 px-3 rounded-xl border border-[#0e7f3d] text-[#0e7f3d] font-bold text-[12.5px] hover:bg-emerald-50 active:scale-95 transition-all"
+                      >
+                        Catat Bahan Manual
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Normal text query message */}
+                {msg.sender === 'user' && msg.text && (
+                  <p className="leading-relaxed">{msg.text}</p>
+                )}
 
                 {/* Recipe Card Output */}
                 {msg.type === 'recipe' && msg.data && (
@@ -388,87 +560,9 @@ export default function TanyaAiScreen({
             </div>
           )}
 
-          {/* Button to reset/start new conversation */}
-          {!isLoading && (
-            <div className="flex justify-center pt-1 pb-1">
-              <button
-                type="button"
-                onClick={() => setChatMessages([])}
-                className="text-[12px] text-[#0e7f3d] hover:underline font-semibold bg-[#e5f7e8] px-3.5 py-1.5 rounded-full"
-              >
-                + Mulai Topik Baru
-              </button>
-            </div>
-          )}
-
           <div ref={chatBottomRef} />
         </div>
       )}
-
-      {/* ── 6. Section "PILIH TOPIK" (Figma node 32:3826) ── */}
-      <div className="space-y-3 pt-2">
-        <h2 className="text-[12px] font-bold text-[#3d5045] tracking-[0.6px] uppercase">
-          PILIH TOPIK
-        </h2>
-
-        <div className="space-y-3">
-          {/* Card 1: Resep dari bahan hampir basi (Figma node 32:3830) */}
-          <button
-            type="button"
-            onClick={handleSelectRecipeTopic}
-            disabled={isLoading}
-            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
-                <img src={aiClock} alt="Resep" className="w-[20px] h-[20px]" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[#0e7f3d] text-[13.5px] leading-snug">
-                  Resep dari bahan hampir basi
-                </h3>
-                <p className="text-[#65796c] text-[12px] leading-snug mt-0.5">
-                  {criticalItems.length > 0
-                    ? `Ada ${criticalItems.length} bahan kritis di kulkasku`
-                    : 'Pilih bahan kritis, AI beri resep kilat'}
-                </p>
-              </div>
-            </div>
-            <img src={chatChevron} alt="→" className="w-[20px] h-[20px] opacity-70 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-
-          {/* Card 2: Olah bahan basi jadi kompos (Figma node 32:3846) */}
-          <button
-            type="button"
-            onClick={handleSelectCompostTopic}
-            disabled={isLoading}
-            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
-                <img src={aiLeaf} alt="Kompos" className="w-[20px] h-[20px]" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[#0e7f3d] text-[13.5px] leading-snug">
-                  Olah bahan basi jadi kompos
-                </h3>
-                <p className="text-[#65796c] text-[12px] leading-snug mt-0.5">
-                  {spoiledItems.length > 0
-                    ? `Ada ${spoiledItems.length} bahan basi siap diolah`
-                    : 'Pilih bahan rusak, AI beri panduan kompos'}
-                </p>
-              </div>
-            </div>
-            <img src={chatChevron} alt="→" className="w-[20px] h-[20px] opacity-70 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        </div>
-
-        {/* Security / Guardrail Notice (Figma node 32:3862) */}
-        <div className="flex items-center justify-center gap-1.5 pt-2 text-[#65796c] text-[11.5px]">
-          <img src={aiLock} alt="Lock" className="w-[14px] h-[14px] opacity-80" />
-          <span>Tanya AI hanya menjawab seputar resep dan kompos</span>
-        </div>
-      </div>
 
       {/* ── 7. Input Form (Custom Chat Query) ── */}
       <form onSubmit={handleSendCustomMessage} className="pt-2">

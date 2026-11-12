@@ -193,22 +193,37 @@ export default function App() {
           onConfirm={handleConfirmLogout}
         />
 
-        {/* Teammate Modals */}
+        {/* Teammate Modals: Fullscreen Modal Overlays */}
         {showScanModal && (
-          <ScanModal
-            isOpen={showScanModal}
-            onClose={() => setShowScanModal(false)}
-            onItemsAdded={() => refreshAllData()}
-          />
+          <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
+            <ScanModal
+              isOpen={showScanModal}
+              onClose={() => setShowScanModal(false)}
+              onOpenManual={() => {
+                setShowScanModal(false);
+                setManualInitialTab('raw');
+                setShowManualModal(true);
+              }}
+              onSavedToFridge={() => {
+                setShowScanModal(false);
+                refreshAllData();
+              }}
+            />
+          </div>
         )}
 
         {showManualModal && (
-          <ManualInputModal
-            isOpen={showManualModal}
-            initialTab={manualInitialTab}
-            onClose={() => setShowManualModal(false)}
-            onItemAdded={() => refreshAllData()}
-          />
+          <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
+            <ManualInputModal
+              isOpen={showManualModal}
+              initialTab={manualInitialTab}
+              onClose={() => setShowManualModal(false)}
+              onItemAdded={() => {
+                setShowManualModal(false);
+                refreshAllData();
+              }}
+            />
+          </div>
         )}
       </div>
     </div>
