@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="SVG - Sun / Brightness Icon" clip-path="url(#clip0_0_7)">
+<path id="Vector" d="M6.66667 10C6.66667 11.8397 8.16028 13.3333 10 13.3333C11.8397 13.3333 13.3333 11.8397 13.3333 10C13.3333 8.16028 11.8397 6.66667 10 6.66667C8.16028 6.66667 6.66667 8.16028 6.66667 10V10" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" stroke="#92400E"/>
+<path id="Vector_2" d="M10 1.66667V3.33333M10 16.6667V18.3333M4.10833 4.10833L5.28333 5.28333M14.7167 14.7167L15.8917 15.8917M1.66667 10H3.33333M16.6667 10H18.3333M5.28333 14.7167L4.10833 15.8917M15.8917 4.10833L14.7167 5.28333" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" stroke="#92400E"/>
+</g>
+<defs>
+<clipPath id="clip0_0_7">
+<rect width="20" height="20" fill="white"/>
+</clipPath>
+</defs>
+</svg>
