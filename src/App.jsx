@@ -86,12 +86,15 @@ export default function App() {
         ) : (
           /* 3. Main Authenticated Views with Top Header & Bottom Nav */
           <>
-            <TopHeader
-              user={user}
-              unreadCount={unreadNotifCount}
-              onOpenNotifications={() => setCurrentTab('notifications')}
-              onOpenSettings={() => setShowLogoutDialog(true)}
-            />
+            {/* TopHeader only rendered on Pantry / Dashboard screen to prevent duplicate headers */}
+            {currentTab === 'pantry' && (
+              <TopHeader
+                user={user}
+                unreadCount={unreadNotifCount}
+                onOpenNotifications={() => setCurrentTab('notifications')}
+                onOpenSettings={() => setShowLogoutDialog(true)}
+              />
+            )}
 
             <main className="flex-1 overflow-y-auto">
               {/* Tab 1: Pantry / Dashboard */}

@@ -1,11 +1,11 @@
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
-// Daftar model dengan auto-rotasi jika salah satu terkena limit kuota (429) atau sibuk (503)
+// Daftar model teruji (gemini-3.5-flash-lite & 3.6-flash paling cepat dan responsif)
 const MODELS = [
   "gemini-3.5-flash-lite",
-  "gemini-3.8-flash",
   "gemini-3.6-flash",
-  "gemini-3.1-flash-lite"
+  "gemini-3.1-flash-lite",
+  "gemini-3.8-flash"
 ];
 
 function safeJsonParse(text, fallback) {
@@ -19,14 +19,15 @@ function safeJsonParse(text, fallback) {
   }
 }
 
-async function callGeminiJson(parts, fallback, timeoutPerModelMs = 6500) {
-  if (!API_KEY) return fallback;
+async function callGeminiJson(parts, fallback, timeoutPerModelMs = 8000) {
+  const activeKey = API_KEY;
+  if (!activeKey) return fallback;
 
   for (const model of MODELS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutPerModelMs);
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -44,9 +45,10 @@ async function callGeminiJson(parts, fallback, timeoutPerModelMs = 6500) {
         const parsed = text ? safeJsonParse(text, null) : null;
         if (parsed) return parsed;
       }
-      // Jika 429 (kuota habis) atau 503 (server penuh), lanjut otomatis ke model berikutnya
-    } catch {
+      // Jika 429 (kuota) atau 503 (sibuk), rotasi otomatis ke model berikutnya
+    } catch (e) {
       clearTimeout(timer);
+      console.warn(`Model ${model} fetch error:`, e.message);
     }
   }
 
@@ -105,7 +107,7 @@ Balas HANYA dalam JSON valid dengan struktur persis ini:
   const parsed = await callGeminiJson(
     [{ text: prompt }, { inlineData: { data: cleanBase64, mimeType } }],
     mockScanData,
-    8000
+    10000
   );
   return parsed?.foodItems ? parsed : mockScanData;
 }
@@ -149,7 +151,8 @@ Balas HANYA JSON:
   "additionalIngredients": ["Bumbu dapur dasar (bawang putih, garam, air)"],
   "steps": ["Langkah 1", "Langkah 2", "Langkah 3"]
 }`;
-  return await callGeminiJson([{ text: prompt }], fallbackRecipe, 6000);
+
+  return await callGeminiJson([{ text: prompt }], fallbackRecipe, 8000);
 }
 
 /**
@@ -180,5 +183,6 @@ Balas HANYA JSON:
   "steps": ["Langkah 1", "Langkah 2", "Langkah 3"],
   "estimatedDays": 14
 }`;
-  return await callGeminiJson([{ text: prompt }], fallbackAnalysis, 6000);
+
+  return await callGeminiJson([{ text: prompt }], fallbackAnalysis, 8000);
 }

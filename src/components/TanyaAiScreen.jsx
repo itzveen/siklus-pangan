@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as store from '../services/storageService.js';
 import * as gemini from '../services/geminiService.js';
 
@@ -18,17 +18,22 @@ export default function TanyaAiScreen({
   onOpenManual
 }) {
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'riwayat'
-  const [selectedTopic, setSelectedTopic] = useState(null); // null | 'recipe' | 'compost'
   const [isLoading, setIsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [customInput, setCustomInput] = useState('');
+  const chatBottomRef = useRef(null);
+
+  // Auto-scroll to bottom of conversation
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isLoading]);
 
   // Critical items: expiring in <= 3 days
   const criticalItems = foodItems.filter(f => f.expiryDays <= 3 && f.status !== 'spoiled');
   const spoiledItems = foodItems.filter(f => f.status === 'spoiled');
 
   const handleSelectRecipeTopic = async () => {
-    setSelectedTopic('recipe');
+    if (isLoading) return;
     setIsLoading(true);
 
     const targetItems = criticalItems.length > 0
@@ -41,7 +46,7 @@ export default function TanyaAiScreen({
       text: `Tolong beri resep kilat dari bahan yang hampir basi: ${targetItems.map(i => i.name).join(', ')}.`
     };
 
-    setChatMessages([userMsg]);
+    setChatMessages(prev => [...prev, userMsg]);
 
     try {
       const recipe = await gemini.generateRescueRecipe(targetItems);
@@ -52,7 +57,7 @@ export default function TanyaAiScreen({
         data: recipe
       };
 
-      setChatMessages([userMsg, aiMsg]);
+      setChatMessages(prev => [...prev, aiMsg]);
 
       // Automatically persist to storage for Riwayat Chat
       store.addAiHistoryEntry({
@@ -73,7 +78,7 @@ export default function TanyaAiScreen({
   };
 
   const handleSelectCompostTopic = async () => {
-    setSelectedTopic('compost');
+    if (isLoading) return;
     setIsLoading(true);
 
     const targetItem = spoiledItems.length > 0
@@ -86,7 +91,7 @@ export default function TanyaAiScreen({
       text: `Bagaimana cara mengolah ${targetItem.name} yang sudah basi agar jadi kompos tanpa bau?`
     };
 
-    setChatMessages([userMsg]);
+    setChatMessages(prev => [...prev, userMsg]);
 
     try {
       const guide = await gemini.analyzeCompostAction(targetItem, user?.householdType || 'house');
@@ -97,7 +102,7 @@ export default function TanyaAiScreen({
         data: guide
       };
 
-      setChatMessages([userMsg, aiMsg]);
+      setChatMessages(prev => [...prev, aiMsg]);
 
       // Automatically persist to storage for Riwayat Chat
       store.addAiHistoryEntry({
@@ -134,7 +139,6 @@ export default function TanyaAiScreen({
     setChatMessages(prev => [...prev, userMsg]);
 
     try {
-      // Determine if question is compost or recipe oriented
       const isCompost = /kompos|basi|busuk|tanah|biopori|takakura|bokashi|pupuk/i.test(text);
 
       if (isCompost) {
@@ -144,7 +148,7 @@ export default function TanyaAiScreen({
         store.addAiHistoryEntry({
           type: 'compost',
           badge: 'Kompos',
-          title: `Tanya Kompos: ${text.slice(0, 25)}...`,
+          title: `Tanya Kompos: ${text.slice(0, 25)}`,
           summary: guide.why,
           prompt: text,
           tags: ['Kompos'],
@@ -175,7 +179,7 @@ export default function TanyaAiScreen({
 
   return (
     <div
-      className="w-full min-h-screen pb-28 pt-4 px-5 space-y-5 animate-in fade-in duration-300 relative"
+      className="w-full min-h-screen pb-32 pt-4 px-5 space-y-5 animate-in fade-in duration-300 relative"
       style={{
         backgroundColor: '#f8fff4',
         fontFamily: 'Poppins, sans-serif'
@@ -215,8 +219,6 @@ export default function TanyaAiScreen({
           type="button"
           onClick={() => {
             setActiveTab('chat');
-            setSelectedTopic(null);
-            setChatMessages([]);
           }}
           className={`flex-1 py-2.5 rounded-full font-semibold text-[14px] text-center transition-all ${
             activeTab === 'chat'
@@ -249,13 +251,13 @@ export default function TanyaAiScreen({
         </div>
       </div>
 
-      {/* ── 5. Conversation Area (When messages exist) ── */}
+      {/* ── 5. Conversation Stream ── */}
       {chatMessages.length > 0 && (
         <div className="space-y-4 pt-2">
           {chatMessages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex items-start gap-2.5 ${
+              className={`flex items-start gap-2.5 animate-in fade-in duration-200 ${
                 msg.sender === 'user' ? 'justify-end' : 'justify-start'
               }`}
             >
@@ -266,7 +268,7 @@ export default function TanyaAiScreen({
               )}
 
               <div
-                className={`rounded-[22px] p-4 text-[13.5px] max-w-[310px] shadow-xs ${
+                className={`rounded-[22px] p-4 text-[13.5px] max-w-[320px] shadow-xs ${
                   msg.sender === 'user'
                     ? 'bg-[#15803d] text-white'
                     : 'bg-white border border-[#cdebd3] text-[#1b2e23]'
@@ -274,14 +276,14 @@ export default function TanyaAiScreen({
               >
                 {msg.text && <p className="leading-relaxed">{msg.text}</p>}
 
-                {/* Recipe Result Card */}
+                {/* Recipe Card Output */}
                 {msg.type === 'recipe' && msg.data && (
                   <div className="space-y-3 mt-1">
                     <div className="flex items-center justify-between gap-2 border-b border-[#cdebd3]/60 pb-2">
                       <span className="font-bold text-[15px] text-[#0e7f3d]">
                         🍳 {msg.data.title}
                       </span>
-                      <span className="text-[11px] font-semibold bg-[#dcfce7] text-[#15803d] px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-semibold bg-[#dcfce7] text-[#15803d] px-2 py-0.5 rounded-full whitespace-nowrap">
                         ⏱️ {msg.data.cookingTimeMinutes || 12}m
                       </span>
                     </div>
@@ -310,7 +312,7 @@ export default function TanyaAiScreen({
                       <p className="font-bold text-[12px] text-[#0e7f3d] mb-1.5">
                         Langkah Memasak Kilat:
                       </p>
-                      <ol className="list-decimal list-inside space-y-1 text-[12px] text-[#374151] leading-relaxed">
+                      <ol className="list-decimal list-inside space-y-1.5 text-[12px] text-[#374151] leading-relaxed">
                         {(msg.data.steps || []).map((step, idx) => (
                           <li key={idx} className="pl-1">
                             {step}
@@ -319,14 +321,14 @@ export default function TanyaAiScreen({
                       </ol>
                     </div>
 
-                    <div className="pt-1 flex items-center justify-between text-[11px] text-[#65796c] border-t border-[#cdebd3]/60">
-                      <span>Tersimpan otomatis ke Riwayat Chat</span>
+                    <div className="pt-1.5 flex items-center justify-between text-[11px] text-[#65796c] border-t border-[#cdebd3]/60">
+                      <span>Tersimpan di Riwayat Chat</span>
                       <span className="font-bold text-[#0e7f3d]">✓ Tersimpan</span>
                     </div>
                   </div>
                 )}
 
-                {/* Compost Result Card */}
+                {/* Compost Card Output */}
                 {msg.type === 'compost' && msg.data && (
                   <div className="space-y-3 mt-1">
                     <div className="flex items-center justify-between gap-2 border-b border-[#cdebd3]/60 pb-2">
@@ -352,7 +354,7 @@ export default function TanyaAiScreen({
 
                     <div>
                       <p className="font-bold text-[12px] text-[#0e7f3d] mb-1.5">Langkah Pengolahan:</p>
-                      <ol className="list-decimal list-inside space-y-1 text-[12px] text-[#374151] leading-relaxed">
+                      <ol className="list-decimal list-inside space-y-1.5 text-[12px] text-[#374151] leading-relaxed">
                         {(msg.data.steps || []).map((step, idx) => (
                           <li key={idx} className="pl-1">
                             {step}
@@ -361,8 +363,8 @@ export default function TanyaAiScreen({
                       </ol>
                     </div>
 
-                    <div className="pt-1 flex items-center justify-between text-[11px] text-[#65796c] border-t border-[#cdebd3]/60">
-                      <span>Tersimpan otomatis ke Riwayat Chat</span>
+                    <div className="pt-1.5 flex items-center justify-between text-[11px] text-[#65796c] border-t border-[#cdebd3]/60">
+                      <span>Tersimpan di Riwayat Chat</span>
                       <span className="font-bold text-[#0e7f3d]">✓ Tersimpan</span>
                     </div>
                   </div>
@@ -373,17 +375,33 @@ export default function TanyaAiScreen({
 
           {/* AI Thinking Animation */}
           {isLoading && (
-            <div className="flex items-center gap-2.5">
-              <div className="w-[32px] h-[32px] rounded-full bg-[#d5f7e0] flex items-center justify-center flex-shrink-0 animate-pulse">
+            <div className="flex items-center gap-2.5 animate-in fade-in">
+              <div className="w-[32px] h-[32px] rounded-full bg-[#d5f7e0] flex items-center justify-center flex-shrink-0 animate-spin">
                 <img src={aiSparkle} alt="" className="w-[16px] h-[16px]" />
               </div>
               <div className="bg-white border border-[#cdebd3] rounded-[22px] px-4 py-3 shadow-xs">
-                <p className="text-[12.5px] text-[#0e7f3d] font-medium animate-pulse flex items-center gap-1.5">
-                  <span>Gemini AI sedang meracik resep & panduan...</span>
+                <p className="text-[12.5px] text-[#0e7f3d] font-semibold animate-pulse flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#0e7f3d] animate-ping" />
+                  Gemini AI sedang meracik resep & panduan...
                 </p>
               </div>
             </div>
           )}
+
+          {/* Button to reset/start new conversation */}
+          {!isLoading && (
+            <div className="flex justify-center pt-1 pb-1">
+              <button
+                type="button"
+                onClick={() => setChatMessages([])}
+                className="text-[12px] text-[#0e7f3d] hover:underline font-semibold bg-[#e5f7e8] px-3.5 py-1.5 rounded-full"
+              >
+                + Mulai Topik Baru
+              </button>
+            </div>
+          )}
+
+          <div ref={chatBottomRef} />
         </div>
       )}
 
@@ -399,7 +417,7 @@ export default function TanyaAiScreen({
             type="button"
             onClick={handleSelectRecipeTopic}
             disabled={isLoading}
-            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group"
+            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
@@ -424,7 +442,7 @@ export default function TanyaAiScreen({
             type="button"
             onClick={handleSelectCompostTopic}
             disabled={isLoading}
-            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group"
+            className="w-full bg-white border border-[#2e7d4d] rounded-[24px] p-4 flex items-center justify-between shadow-xs hover:bg-emerald-50/40 active:scale-[0.99] transition-all text-left group disabled:opacity-60 cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-[40px] h-[40px] rounded-[16px] bg-[#d5f7e0] flex items-center justify-center flex-shrink-0">
