@@ -169,11 +169,11 @@ export default function ScanModal({
   const triggerScanProcess = async (base64Data = null, mimeType = 'image/jpeg') => {
     setStep('scanning');
     try {
-      // Coba hit API Backend jika tersedia
+      // Hit API Backend POST /api/ai/scan sesuai kontrak BE (base64Data & mimeType)
       const apiRes = await fetchFromBackend('/ai/scan', {
         method: 'POST',
         body: JSON.stringify({
-          base64Image: base64Data || 'dummy_base64',
+          base64Data: base64Data || 'dummy_base64',
           mimeType
         })
       }).catch(() => null);
@@ -233,9 +233,18 @@ export default function ScanModal({
 
   const selectedItems = foodItems.filter((i) => i.selected !== false);
 
-  const handleSaveSelected = () => {
+  const handleSaveSelected = async () => {
     const toSave = selectedItems.length > 0 ? selectedItems : foodItems;
     store.addMultipleFoodItems(toSave);
+    try {
+      // Hit API Backend POST /api/foods/bulk
+      await fetchFromBackend('/foods/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ items: toSave })
+      });
+    } catch {
+      // Tetap lanjutkan jika offline
+    }
     setSavedCount(toSave.length);
     setShowSuccessDialog(true);
   };

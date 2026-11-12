@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as store from '../services/storageService.js';
+import { fetchFromBackend } from '../config/api.js';
 
 // Figma assets
 import imgRawBackArrow from '../assets/figma/a26fc.svg';
@@ -125,12 +126,12 @@ export default function ManualInputModal({
   const leftoverStorageLabelText =
     STORAGE_OPTIONS.find((s) => s.id === leftoverStorage)?.label || 'Chiller';
 
-  const handleSaveRaw = (resetAfter = false) => {
+  const handleSaveRaw = async (resetAfter = false) => {
     const finalName = rawName.trim() || 'Bayam Hijau';
     if (!rawName.trim()) {
       setRawName('Bayam Hijau');
     }
-    store.addFoodItem({
+    const payload = {
       stockType: 'raw',
       name: finalName,
       category: rawCategory,
@@ -143,7 +144,16 @@ export default function ManualInputModal({
       expiryDays: rawExpiryDays,
       weightKg: 0.3,
       notes: rawNotes.trim()
-    });
+    };
+    store.addFoodItem(payload);
+    try {
+      await fetchFromBackend('/foods', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    } catch {
+      // Tetap lanjutkan jika offline
+    }
 
     if (resetAfter) {
       setRawName('');
@@ -157,9 +167,9 @@ export default function ManualInputModal({
     }
   };
 
-  const handleSaveLeftover = () => {
+  const handleSaveLeftover = async () => {
     const finalName = leftoverName.trim() || 'Sayur sop';
-    store.addFoodItem({
+    const payload = {
       stockType: 'leftover',
       name: finalName,
       category: 'leftover',
@@ -167,14 +177,23 @@ export default function ManualInputModal({
       quantity: leftoverQuantity,
       unit: leftoverUnit,
       quantityText: `${leftoverQuantity} ${leftoverUnit} (350g)`,
-      cookedDate: cookedDateText,
-      cookedTime: cookedTimeText,
+      cookedDate: cookedDateIso || cookedDateText,
+      cookedTime: cookedTimeIso || cookedTimeText,
       storage: leftoverStorage,
       storageLabel: `${leftoverQuantity} ${leftoverUnit} · ${leftoverStorageLabelText}`,
       expiryDays: leftoverExpiryDays,
       weightKg: 0.35,
       notes: leftoverNotes.trim()
-    });
+    };
+    store.addFoodItem(payload);
+    try {
+      await fetchFromBackend('/foods', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    } catch {
+      // Tetap lanjutkan jika offline
+    }
     setSavedCount(1);
     setShowSuccessDialog(true);
   };

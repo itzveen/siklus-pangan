@@ -86,7 +86,10 @@ export default function CompostModal({
             householdType
           })
         });
-        const guideData = apiRes?.data || apiRes?.analysis || apiRes;
+        const guideData = apiRes?.guide || apiRes?.data || apiRes?.analysis || apiRes;
+        if (Array.isArray(apiRes?.availableBatches) && apiRes.availableBatches.length > 0) {
+          setBatches(apiRes.availableBatches);
+        }
         if (!cancelled && guideData?.steps) {
           setAnalysis(guideData);
           setLoading(false);
