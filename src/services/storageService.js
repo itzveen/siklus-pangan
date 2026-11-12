@@ -22,15 +22,12 @@ const KEYS = {
 
 export function getFoodItems() {
   const data = localStorage.getItem(KEYS.FOODS);
-  if (!data) {
-    localStorage.setItem(KEYS.FOODS, JSON.stringify(INITIAL_FOOD_ITEMS));
-    return INITIAL_FOOD_ITEMS;
-  }
+  if (!data) return []; // User baru: kulkas kosong
   try {
     return JSON.parse(data);
   } catch (e) {
     console.error("Gagal parse food items:", e);
-    return INITIAL_FOOD_ITEMS;
+    return [];
   }
 }
 
@@ -125,15 +122,12 @@ export function removeFoodItem(id) {
 
 export function getCompostBatches() {
   const data = localStorage.getItem(KEYS.BATCHES);
-  if (!data) {
-    localStorage.setItem(KEYS.BATCHES, JSON.stringify(INITIAL_COMPOST_BATCHES));
-    return INITIAL_COMPOST_BATCHES;
-  }
+  if (!data) return []; // User baru: belum ada batch kompos
   try {
     return JSON.parse(data);
   } catch (e) {
     console.error("Gagal parse compost batches:", e);
-    return INITIAL_COMPOST_BATCHES;
+    return [];
   }
 }
 
@@ -143,14 +137,11 @@ export function saveCompostBatches(batches) {
 
 export function getHarvestHistory() {
   const data = localStorage.getItem(KEYS.HARVESTS);
-  if (!data) {
-    localStorage.setItem(KEYS.HARVESTS, JSON.stringify(INITIAL_HARVEST_HISTORY));
-    return INITIAL_HARVEST_HISTORY;
-  }
+  if (!data) return []; // User baru: belum ada riwayat panen
   try {
     return JSON.parse(data);
   } catch (e) {
-    return INITIAL_HARVEST_HISTORY;
+    return [];
   }
 }
 
@@ -319,14 +310,11 @@ export function getAiTopics() {
 
 export function getAiHistory() {
   const data = localStorage.getItem(KEYS.CHATS);
-  if (!data) {
-    localStorage.setItem(KEYS.CHATS, JSON.stringify(INITIAL_AI_HISTORY));
-    return INITIAL_AI_HISTORY;
-  }
+  if (!data) return []; // User baru: belum ada riwayat chat AI
   try {
     return JSON.parse(data);
   } catch (e) {
-    return INITIAL_AI_HISTORY;
+    return [];
   }
 }
 
