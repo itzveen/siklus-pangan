@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import * as store from "../services/storageService.js";
 import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Siklus Kompos (32:3581)
@@ -48,27 +47,23 @@ export default function CompostPage({
   const [selectedHarvestDetail, setSelectedHarvestDetail] = useState(null);
 
   const refreshData = async () => {
-    const currentBatches = store.getCompostBatches();
-    const currentHarvests = store.getHarvestHistory();
-    setBatches(currentBatches);
-    setHarvests(currentHarvests);
-    if (currentHarvests.length > 0 && !selectedHarvestDetail) {
-      setSelectedHarvestDetail(currentHarvests[0]);
-    }
-
     try {
-      // Hit Backend API GET /api/compost/batches
+      // Hit Backend API GET /api/compost/batches secara langsung
       const apiRes = await fetchFromBackend("/compost/batches");
-      const activeBatches = apiRes?.activeBatches || apiRes?.data?.activeBatches;
-      const harvestHistory = apiRes?.harvestHistory || apiRes?.data?.harvestHistory;
-      if (Array.isArray(activeBatches) && activeBatches.length > 0) {
+      const activeBatches = apiRes?.activeBatches ?? apiRes?.data?.activeBatches;
+      const harvestHistory = apiRes?.harvestHistory ?? apiRes?.data?.harvestHistory;
+      if (Array.isArray(activeBatches)) {
         setBatches(activeBatches);
       }
-      if (Array.isArray(harvestHistory) && harvestHistory.length > 0) {
+      if (Array.isArray(harvestHistory)) {
         setHarvests(harvestHistory);
+        if (harvestHistory.length > 0 && !selectedHarvestDetail) {
+          setSelectedHarvestDetail(harvestHistory[0]);
+        }
       }
     } catch {
-      // Gunakan data localStorage jika offline
+      setBatches([]);
+      setHarvests([]);
     }
   };
 
@@ -87,43 +82,44 @@ export default function CompostPage({
   }, [initialView]);
 
   const handleLockBatch = async (batchId) => {
-    const updated = store.lockBatchForCuring(batchId);
-    setBatches(updated);
     try {
       await fetchFromBackend(`/compost/${batchId}/lock`, { method: "POST" });
+      await refreshData();
     } catch {
-      // Abaikan jika offline
+      // Abaikan jika gagal
     }
   };
 
   const handleFastForwardBatch = async (batch) => {
-    const updated = store.fastForwardBatchDemo(batch.id, 14);
-    setBatches(updated);
     try {
-      await fetchFromBackend(`/compost/${batch.id}/simulate`, { method: "POST" });
+      const apiRes = await fetchFromBackend(`/compost/${batch.id}/simulate`, { method: "POST" });
+      const updatedBatch = apiRes?.batch || batch;
+      await refreshData();
+      setSelectedBatchForHarvest(updatedBatch);
+      setHarvestWeight(3.5);
+      setSubView("harvest");
     } catch {
-      // Abaikan jika offline
+      setSelectedBatchForHarvest(batch);
+      setHarvestWeight(3.5);
+      setSubView("harvest");
     }
-    const target = updated.find((b) => b.id === batch.id) || batch;
-    setSelectedBatchForHarvest(target);
-    setHarvestWeight(3.5);
-    setSubView("harvest");
   };
 
   const handleRecordHarvest = async () => {
     const targetId = selectedBatchForHarvest?.id || "batch-2";
-    const newRecord = store.harvestBatch(targetId, harvestWeight);
     try {
-      await fetchFromBackend(`/compost/${targetId}/harvest`, {
+      const apiRes = await fetchFromBackend(`/compost/${targetId}/harvest`, {
         method: "POST",
         body: JSON.stringify({ weightKg: harvestWeight })
       });
+      await refreshData();
+      if (apiRes?.harvest) {
+        setSelectedHarvestDetail(apiRes.harvest);
+      }
+      setShowHarvestSuccessModal(true);
     } catch {
-      // Abaikan jika offline
+      setShowHarvestSuccessModal(true);
     }
-    refreshData();
-    setSelectedHarvestDetail(newRecord);
-    setShowHarvestSuccessModal(true);
   };
 
   const handleFinishHarvestModal = () => {
@@ -132,8 +128,7 @@ export default function CompostPage({
   };
 
   const handleOpenDetail = async (harvestItem) => {
-    const detail = store.getHarvestDetail(harvestItem?.id);
-    setSelectedHarvestDetail(detail || harvestItem);
+    setSelectedHarvestDetail(harvestItem);
     setSubView("detail");
     try {
       const apiRes = await fetchFromBackend(`/compost/harvests/${harvestItem?.id || "batch-0"}`);
@@ -142,7 +137,7 @@ export default function CompostPage({
         setSelectedHarvestDetail(detailData);
       }
     } catch {
-      // Gunakan detail lokal
+      // Gunakan item yang diklik
     }
   };
 

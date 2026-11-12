@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import * as store from "../services/storageService.js";
-import { generateRescueRecipe } from "../services/geminiService.js";
 import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Rescue Resep (31:3285) & Konfirmasi Masakan Selesai (59:518)
@@ -25,18 +23,14 @@ export default function RecipeModal({
   const [showSuccessDialog, setShowSuccessDialog] = useState(initialShowSuccess);
   const [targetItems, setTargetItems] = useState([]);
   const [recipe, setRecipe] = useState({
-    introText: "Siap! Bayam Hijau tinggal 1 hari, jadi yuk dimasak sekarang bareng Telur Ayam.",
-    title: "Sup Bening Bayam Telur Gurih",
-    cookingTimeMinutes: 12,
-    difficulty: "Sangat Mudah",
-    servings: 2,
-    matchedItems: ["Bayam Hijau", "Telur Ayam"],
-    additionalIngredients: ["Bumbu dapur dasar (bawang putih, garam, air)"],
-    steps: [
-      "Rebus air bersama irisan bawang putih hingga mendidih.",
-      "Kocok telur, tuang perlahan ke dalam kuah sambil diaduk membentuk serabut.",
-      "Masukkan bayam, masak sebentar selama 2 menit, angkat dan sajikan."
-    ]
+    introText: "",
+    title: "",
+    cookingTimeMinutes: 0,
+    difficulty: "",
+    servings: 0,
+    matchedItems: [],
+    additionalIngredients: [],
+    steps: []
   });
 
   useEffect(() => {
@@ -46,56 +40,32 @@ export default function RecipeModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    const allFoods = store.getFoodItems();
-    const candidates =
-      expiringItems && expiringItems.length > 0
-        ? expiringItems
-        : allFoods.filter((f) => f.status === "warning" || f.status === "safe").slice(0, 2);
-
-    const resolvedItems =
-      candidates.length > 0
-        ? candidates
-        : [
-            { id: "food-1", name: "Bayam Hijau", expiryDays: 1, weightKg: 0.25 },
-            { id: "food-2", name: "Telur Ayam", expiryDays: 2, weightKg: 0.5 }
-          ];
-
-    setTargetItems(resolvedItems);
-
     let cancelled = false;
     async function loadRecipe() {
       setLoading(true);
       try {
+        // Ambil bahan kritis langsung dari Backend GET /api/foods jika expiringItems tidak dikirim via props
+        let resolvedItems = Array.isArray(expiringItems) && expiringItems.length > 0 ? expiringItems : [];
+        if (resolvedItems.length === 0) {
+          const foodsRes = await fetchFromBackend("/foods");
+          const beFoods = foodsRes?.foods || foodsRes?.data?.foods || [];
+          resolvedItems = beFoods.filter((f) => f.status === "warning" || f.status === "safe").slice(0, 2);
+        }
+        if (!cancelled) {
+          setTargetItems(resolvedItems);
+        }
+
         // Hit Backend API POST /api/ai/rescue-recipe
         const apiRes = await fetchFromBackend("/ai/rescue-recipe", {
           method: "POST",
           body: JSON.stringify({ items: resolvedItems })
         });
-        const recipeData = apiRes?.data || apiRes?.recipe || apiRes;
+        const recipeData = apiRes?.recipe || apiRes?.data?.recipe || apiRes?.data || apiRes;
         if (!cancelled && recipeData?.title) {
           setRecipe(recipeData);
-          setLoading(false);
-          return;
         }
       } catch {
-        // Fallback ke service lokal jika offline
-      }
-
-      try {
-        const res = await generateRescueRecipe(resolvedItems);
-        if (!cancelled && res) {
-          setRecipe(res);
-          store.addAiHistoryEntry({
-            type: "rescue-recipe",
-            title: res.title || "Sup Bening Bayam Telur Gurih",
-            subtitle: `Bahan kulkas: ${resolvedItems.map((i) => i.name).join(" + ")}`,
-            badgeLabel: "Resep",
-            badgeColor: "green",
-            userPrompt: "Tolong kasih resep kilat dari bahan yang hampir basi di kulkasku.",
-            autoTags: resolvedItems.map((i) => i.name),
-            aiResponse: res
-          });
-        }
+        // Biarkan kosong jika BE belum merespons
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -112,11 +82,10 @@ export default function RecipeModal({
   const handleFinishCooking = async () => {
     for (const item of targetItems) {
       if (item.id) {
-        store.markFoodAsCooked(item.id);
         try {
           await fetchFromBackend(`/foods/${item.id}/cook`, { method: "PATCH" });
         } catch {
-          // Abaikan jika offline
+          // Abaikan jika gagal
         }
       }
     }

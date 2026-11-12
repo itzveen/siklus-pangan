@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import * as store from "../services/storageService.js";
-import { analyzeCompostAction } from "../services/geminiService.js";
 import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Alih ke kompos (32:3286) & Konfirmasi simpan ke wadah kompos (61:514)
@@ -20,25 +18,23 @@ export default function CompostModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(initialShowSuccess);
-  const [targetFood, setTargetFood] = useState({
-    id: "food-3",
-    name: "Tahu Putih",
-    status: "spoiled",
-    weightKg: 0.3
-  });
+  const [targetFood, setTargetFood] = useState(
+    foodItem || {
+      id: "",
+      name: "",
+      status: "spoiled",
+      weightKg: 0.3
+    }
+  );
   const [batches, setBatches] = useState([]);
   const [selectedBatchOption, setSelectedBatchOption] = useState("active");
-  const [savedBatchLabel, setSavedBatchLabel] = useState("Batch #1 (Wadah Dapur)");
+  const [savedBatchLabel, setSavedBatchLabel] = useState("");
   const [analysis, setAnalysis] = useState({
-    wasteType: "Protein Nabati & Nitrogen Tinggi",
-    recommendedMethod: "Kompos Padat Wadah / Pupuk Organik Cair",
-    why: "Tahu Putih kaya protein nabati dan nitrogen tinggi, jadi cocok masuk kompos.",
-    safetyWarning: "Makanan berlendir/basi dilarang dikonsumsi. Alihkan ke pengolahan pupuk.",
-    steps: [
-      "Hancurkan tahu basi dengan sendok/sekop kecil.",
-      "Campurkan sekam bakar / tanah kering (perbandingan 1:2) agar tidak bau asam.",
-      "Masukkan ke dalam wadah kompos aktif."
-    ],
+    wasteType: "",
+    recommendedMethod: "",
+    why: "",
+    safetyWarning: "",
+    steps: [],
     estimatedDays: 14
   });
 
@@ -49,35 +45,29 @@ export default function CompostModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    const currentBatches = store.getCompostBatches();
-    setBatches(currentBatches);
-
-    const activeBatch = currentBatches.find((b) => b.stage === "filling");
-    if (activeBatch) {
-      setSelectedBatchOption("active");
-    } else {
-      setSelectedBatchOption("new");
-    }
-
-    const allFoods = store.getFoodItems();
-    const resolvedFood =
-      foodItem ||
-      allFoods.find((f) => f.status === "spoiled") || {
-        id: "food-3",
-        name: "Tahu Putih",
-        status: "spoiled",
-        weightKg: 0.3
-      };
-
-    setTargetFood(resolvedFood);
-
     let cancelled = false;
     async function loadCompostGuide() {
       setLoading(true);
-      const profile = store.getUserProfile();
-      const householdType = profile?.householdType || "house";
-
       try {
+        // Ambil bahan basi & batch kompos langsung dari Backend
+        let resolvedFood = foodItem;
+        if (!resolvedFood || !resolvedFood.name) {
+          const foodsRes = await fetchFromBackend("/foods");
+          const beFoods = foodsRes?.foods || foodsRes?.data?.foods || [];
+          resolvedFood = beFoods.find((f) => f.status === "spoiled") || beFoods[0] || {
+            id: "",
+            name: "Bahan Makanan",
+            status: "spoiled",
+            weightKg: 0.3
+          };
+        }
+        if (!cancelled) {
+          setTargetFood(resolvedFood);
+        }
+
+        const profileRes = await fetchFromBackend("/profile").catch(() => null);
+        const householdType = profileRes?.householdType || "house";
+
         // Hit Backend API POST /api/ai/compost-guide
         const apiRes = await fetchFromBackend("/ai/compost-guide", {
           method: "POST",
@@ -87,8 +77,10 @@ export default function CompostModal({
           })
         });
         const guideData = apiRes?.guide || apiRes?.data || apiRes?.analysis || apiRes;
-        if (Array.isArray(apiRes?.availableBatches) && apiRes.availableBatches.length > 0) {
+        if (Array.isArray(apiRes?.availableBatches)) {
           setBatches(apiRes.availableBatches);
+          const hasFilling = apiRes.availableBatches.some((b) => b.stage === "filling");
+          setSelectedBatchOption(hasFilling ? "active" : "new");
         }
         if (!cancelled && guideData?.steps) {
           setAnalysis(guideData);
@@ -96,24 +88,7 @@ export default function CompostModal({
           return;
         }
       } catch {
-        // Fallback ke service lokal
-      }
-
-      try {
-        const res = await analyzeCompostAction(resolvedFood, householdType);
-        if (!cancelled && res) {
-          setAnalysis(res);
-          store.addAiHistoryEntry({
-            type: "compost-guide",
-            title: `Kompos ${resolvedFood.name} Basi`,
-            subtitle: `Saran metode: ${(res.recommendedMethod || "Kompos Padat Wadah").split("/")[0].trim()}`,
-            badgeLabel: "Kompos",
-            badgeColor: "amber",
-            userPrompt: `${resolvedFood.name} ku sudah basi. Gimana cara mengolahnya jadi kompos?`,
-            autoTags: [resolvedFood.name],
-            aiResponse: res
-          });
-        }
+        // Fallback jika API gagal
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -134,10 +109,8 @@ export default function CompostModal({
     if (selectedBatchOption === "active" && activeFillingBatch) {
       const label = `${activeFillingBatch.title} (${activeFillingBatch.subtitle || "Wadah Dapur"})`;
       setSavedBatchLabel(label);
-      const updated = store.addFoodToCompost(targetFood, activeFillingBatch.id);
-      setBatches(updated);
       try {
-        await fetchFromBackend("/compost/add-item", {
+        const apiRes = await fetchFromBackend("/compost/add-item", {
           method: "POST",
           body: JSON.stringify({
             foodId: targetFood.id,
@@ -147,6 +120,9 @@ export default function CompostModal({
             option: "existing"
           })
         });
+        if (apiRes?.batch) {
+          setSavedBatchLabel(`${apiRes.batch.title} (${apiRes.batch.subtitle || "Wadah Dapur"})`);
+        }
       } catch {
         // Abaikan jika offline
       }
@@ -154,10 +130,8 @@ export default function CompostModal({
       const nextNum = batches.length + 1;
       const newTitle = `Batch #${nextNum}`;
       setSavedBatchLabel(`${newTitle} (Wadah Dapur Baru)`);
-      const updated = store.addFoodToCompost(targetFood, null, newTitle);
-      setBatches(updated);
       try {
-        await fetchFromBackend("/compost/add-item", {
+        const apiRes = await fetchFromBackend("/compost/add-item", {
           method: "POST",
           body: JSON.stringify({
             foodId: targetFood.id,
@@ -166,6 +140,9 @@ export default function CompostModal({
             option: "new"
           })
         });
+        if (apiRes?.batch) {
+          setSavedBatchLabel(`${apiRes.batch.title} (${apiRes.batch.subtitle || "Wadah Dapur Baru"})`);
+        }
       } catch {
         // Abaikan jika offline
       }

@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import * as store from '../services/storageService.js';
 import { fetchFromBackend } from '../config/api.js';
 
 // Figma assets
@@ -72,12 +71,12 @@ export default function ManualInputModal({
   const [rawNotes, setRawNotes] = useState('');
 
   // Leftover Food State (58:132)
-  const [leftoverName, setLeftoverName] = useState('Sayur sop');
+  const [leftoverName, setLeftoverName] = useState('');
   const [leftoverSubCat, setLeftoverSubCat] = useState('Sayur & sup');
-  const [leftoverQuantity, setLeftoverQuantity] = useState(2);
+  const [leftoverQuantity, setLeftoverQuantity] = useState(1);
   const [leftoverUnit, setLeftoverUnit] = useState('porsi');
-  const [cookedDateIso, setCookedDateIso] = useState('2026-11-07');
-  const [cookedDateText, setCookedDateText] = useState('7 Nov 2026');
+  const [cookedDateIso, setCookedDateIso] = useState('2026-11-12');
+  const [cookedDateText, setCookedDateText] = useState('12 Nov 2026');
   const [cookedTimeIso, setCookedTimeIso] = useState('12:30');
   const [cookedTimeText, setCookedTimeText] = useState('12.30');
   const datePickerRef = useRef(null);
@@ -115,9 +114,7 @@ export default function ManualInputModal({
   const [leftoverStorage, setLeftoverStorage] = useState('chiller');
   const [leftoverExpiryDays, setLeftoverExpiryDays] = useState(2);
   const [customExpiryMode, setCustomExpiryMode] = useState(false);
-  const [leftoverNotes, setLeftoverNotes] = useState(
-    'Sisa makan siang, disimpan dalam wadah tertutup.'
-  );
+  const [leftoverNotes, setLeftoverNotes] = useState('');
 
   const activeRawCatInfo =
     RAW_CATEGORIES.find((c) => c.id === rawCategory) || RAW_CATEGORIES[0];
@@ -127,9 +124,10 @@ export default function ManualInputModal({
     STORAGE_OPTIONS.find((s) => s.id === leftoverStorage)?.label || 'Chiller';
 
   const handleSaveRaw = async (resetAfter = false) => {
-    const finalName = rawName.trim() || 'Bayam Hijau';
-    if (!rawName.trim()) {
-      setRawName('Bayam Hijau');
+    const finalName = rawName.trim();
+    if (!finalName) {
+      rawNameInputRef.current?.focus();
+      return;
     }
     const payload = {
       stockType: 'raw',
@@ -138,14 +136,13 @@ export default function ManualInputModal({
       categoryLabel: activeRawCatInfo.label,
       quantity: rawQuantity,
       unit: rawUnit,
-      quantityText: `${rawQuantity} ${rawUnit} (250g)`,
+      quantityText: `${rawQuantity} ${rawUnit}`,
       storage: rawStorage,
       storageLabel: `${rawQuantity} ${rawUnit} · ${rawStorageLabelText}`,
       expiryDays: rawExpiryDays,
       weightKg: 0.3,
       notes: rawNotes.trim()
     };
-    store.addFoodItem(payload);
     try {
       await fetchFromBackend('/foods', {
         method: 'POST',
@@ -168,7 +165,8 @@ export default function ManualInputModal({
   };
 
   const handleSaveLeftover = async () => {
-    const finalName = leftoverName.trim() || 'Sayur sop';
+    const finalName = leftoverName.trim();
+    if (!finalName) return;
     const payload = {
       stockType: 'leftover',
       name: finalName,
@@ -176,7 +174,7 @@ export default function ManualInputModal({
       categoryLabel: leftoverSubCat,
       quantity: leftoverQuantity,
       unit: leftoverUnit,
-      quantityText: `${leftoverQuantity} ${leftoverUnit} (350g)`,
+      quantityText: `${leftoverQuantity} ${leftoverUnit}`,
       cookedDate: cookedDateIso || cookedDateText,
       cookedTime: cookedTimeIso || cookedTimeText,
       storage: leftoverStorage,
@@ -185,7 +183,6 @@ export default function ManualInputModal({
       weightKg: 0.35,
       notes: leftoverNotes.trim()
     };
-    store.addFoodItem(payload);
     try {
       await fetchFromBackend('/foods', {
         method: 'POST',

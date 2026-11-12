@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { scanReceiptOrFoodImage } from '../services/geminiService.js';
-import * as store from '../services/storageService.js';
 import { fetchFromBackend } from '../config/api.js';
 
 // Figma assets
@@ -49,44 +47,8 @@ export default function ScanModal({
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [savedCount, setSavedCount] = useState(3);
 
-  const [foodItems, setFoodItems] = useState([
-    {
-      name: 'Telur Ayam Negri',
-      category: 'meat',
-      storage: 'chiller',
-      storageLabel: '10 butir · Chiller',
-      quantityText: '10 butir (500g)',
-      expiryDays: 14,
-      weightKg: 0.5,
-      selected: true
-    },
-    {
-      name: 'Bayam Segar',
-      category: 'vegetable',
-      storage: 'chiller',
-      storageLabel: '1 ikat · Crisper',
-      quantityText: '1 ikat (250g)',
-      expiryDays: 2,
-      weightKg: 0.25,
-      selected: true
-    },
-    {
-      name: 'Tomat Merah',
-      category: 'vegetable',
-      storage: 'chiller',
-      storageLabel: '500 g · Crisper',
-      quantityText: '500 g',
-      expiryDays: 5,
-      weightKg: 0.5,
-      selected: true
-    }
-  ]);
-
-  const [ignoredItems, setIgnoredItems] = useState([
-    { name: 'Sunlight Pencuci Piring (750ml)', tag: 'SABUN', reason: 'Non-makanan' },
-    { name: 'Paseo Facial Tissue (250s)', tag: 'SANITASI', reason: 'Non-makanan' },
-    { name: 'Rinso Molto Deterjen (800g)', tag: 'LAUNDRY', reason: 'Non-makanan' }
-  ]);
+  const [foodItems, setFoodItems] = useState([]);
+  const [ignoredItems, setIgnoredItems] = useState([]);
 
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -173,17 +135,12 @@ export default function ScanModal({
       const apiRes = await fetchFromBackend('/ai/scan', {
         method: 'POST',
         body: JSON.stringify({
-          base64Data: base64Data || 'dummy_base64',
+          base64Data: base64Data || '',
           mimeType
         })
-      }).catch(() => null);
+      });
 
-      const scanPayload = apiRes?.data || apiRes;
-      const res =
-        scanPayload && Array.isArray(scanPayload.foodItems)
-          ? scanPayload
-          : await scanReceiptOrFoodImage(base64Data || 'dummy_base64', mimeType);
-
+      const res = apiRes?.data || apiRes;
       if (res && Array.isArray(res.foodItems) && res.foodItems.length > 0) {
         setFoodItems(
           res.foodItems.map((item) => ({
@@ -235,7 +192,6 @@ export default function ScanModal({
 
   const handleSaveSelected = async () => {
     const toSave = selectedItems.length > 0 ? selectedItems : foodItems;
-    store.addMultipleFoodItems(toSave);
     try {
       // Hit API Backend POST /api/foods/bulk
       await fetchFromBackend('/foods/bulk', {
