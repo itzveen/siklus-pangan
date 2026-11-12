@@ -586,7 +586,7 @@ export default function CompostPage({
       data-name="Siklus Kompos"
     >
       {/* Top App Brand Bar */}
-      <div className="flex items-center gap-[10px] px-[26px] pt-[24px]">
+      <div className="flex items-center gap-[10px] px-[26px] pt-[24px] pb-[20px]">
         <div className="relative flex items-center justify-center h-[36px] w-[38.103px]">
           <div className="-rotate-90 flex-none">
             <div className="bg-gradient-to-b from-[#28c92a] from-[51.442%] via-[#006d2c] via-[94.712%] to-[#0b6623] to-[94.722%] h-[38.103px] w-[36px] rounded-[10px]" />
@@ -600,22 +600,6 @@ export default function CompostPage({
         <p className="font-bold text-[21px] leading-none">
           <span className="text-[#006d2c]">Eat</span>
           <span className="text-[#28c92a]">Wise</span>
-        </p>
-      </div>
-
-      {/* Header Section */}
-      <div
-        className="flex flex-col gap-[5px] items-start px-[26px] pt-[18px] pb-[16px]"
-        data-node-id="32:3489"
-        data-name="HeaderSection"
-      >
-        <h1 className="font-extrabold text-[#171717] text-[25px] tracking-[-0.625px] leading-[31.25px]">
-          Siklus Kompos Rumah
-          <br />
-          Tangga
-        </h1>
-        <p className="font-normal text-[#475569] text-[13.5px] leading-[18.56px]">
-          Pantau batch yang berjalan dan panen pupuk.
         </p>
       </div>
 

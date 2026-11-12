@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { scanReceiptOrFoodImage } from '../services/geminiService.js';
 import * as store from '../services/storageService.js';
+import { fetchFromBackend } from '../config/api.js';
 
 // Figma assets
 import imgReceiptCapture from '../assets/figma/187d8.png';
@@ -88,11 +89,94 @@ export default function ScanModal({
   ]);
 
   const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraReady, setCameraReady] = useState(false);
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraReady(false);
+  };
+
+  useEffect(() => {
+    if (step !== 'capture') {
+      stopCamera();
+      return;
+    }
+
+    let cancelled = false;
+    async function startFrontCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        setCameraReady(true);
+      } catch {
+        setCameraReady(false);
+      }
+    }
+
+    startFrontCamera();
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [step]);
+
+  const handleCaptureFromCamera = () => {
+    let capturedBase64 = null;
+    if (videoRef.current && cameraReady && videoRef.current.videoWidth > 0) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 640;
+      canvas.height = videoRef.current.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Flip horizontal so selfie/front camera matches preview
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setUploadedPreview(dataUrl);
+        setUploadedFileName('Foto_Kamera_Depan.jpg');
+        capturedBase64 = dataUrl.split(',')[1];
+      }
+    }
+    stopCamera();
+    triggerScanProcess(capturedBase64, 'image/jpeg');
+  };
 
   const triggerScanProcess = async (base64Data = null, mimeType = 'image/jpeg') => {
     setStep('scanning');
     try {
-      const res = await scanReceiptOrFoodImage(base64Data || 'dummy_base64', mimeType);
+      // Coba hit API Backend jika tersedia
+      const apiRes = await fetchFromBackend('/ai/scan', {
+        method: 'POST',
+        body: JSON.stringify({
+          base64Image: base64Data || 'dummy_base64',
+          mimeType
+        })
+      }).catch(() => null);
+
+      const scanPayload = apiRes?.data || apiRes;
+      const res =
+        scanPayload && Array.isArray(scanPayload.foodItems)
+          ? scanPayload
+          : await scanReceiptOrFoodImage(base64Data || 'dummy_base64', mimeType);
+
       if (res && Array.isArray(res.foodItems) && res.foodItems.length > 0) {
         setFoodItems(
           res.foodItems.map((item) => ({
@@ -252,17 +336,32 @@ export default function ScanModal({
             {/* Viewfinder Area */}
             <div className="py-[12px] mt-[4px]">
               <div className="bg-[#0b6623] flex flex-col h-[410px] items-center justify-between overflow-hidden p-[24px] relative rounded-[32px] w-full">
-                {/* Corner Brackets */}
-                <div className="absolute border-[#58d635] border-l-[3px] border-t-[3px] left-[36px] top-[36px] rounded-tl-[12px] size-[36px]" />
-                <div className="absolute border-[#58d635] border-r-[3px] border-t-[3px] right-[36px] top-[36px] rounded-tr-[12px] size-[36px]" />
-                <div className="absolute border-[#58d635] border-b-[3px] border-l-[3px] bottom-[64px] left-[36px] rounded-bl-[12px] size-[36px]" />
-                <div className="absolute border-[#58d635] border-b-[3px] border-r-[3px] bottom-[64px] right-[36px] rounded-br-[12px] size-[36px]" />
+                {/* Live Front Camera Stream */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`absolute inset-0 size-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                    cameraReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                />
 
-                {/* Receipt Image inside Viewfinder */}
-                <div className="relative h-[294px] w-[221px] mt-[0px] flex items-center justify-center">
+                {/* Corner Brackets */}
+                <div className="absolute border-[#58d635] border-l-[3px] border-t-[3px] left-[36px] top-[36px] rounded-tl-[12px] size-[36px] z-10 pointer-events-none" />
+                <div className="absolute border-[#58d635] border-r-[3px] border-t-[3px] right-[36px] top-[36px] rounded-tr-[12px] size-[36px] z-10 pointer-events-none" />
+                <div className="absolute border-[#58d635] border-b-[3px] border-l-[3px] bottom-[64px] left-[36px] rounded-bl-[12px] size-[36px] z-10 pointer-events-none" />
+                <div className="absolute border-[#58d635] border-b-[3px] border-r-[3px] bottom-[64px] right-[36px] rounded-br-[12px] size-[36px] z-10 pointer-events-none" />
+
+                {/* Fallback Receipt Image inside Viewfinder when camera not active */}
+                <div
+                  className={`relative h-[294px] w-[221px] mt-[0px] flex items-center justify-center transition-opacity ${
+                    cameraReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
                   <img
                     alt="Receipt Preview"
-                    className="h-full w-full object-cover pointer-events-none"
+                    className="h-full w-full object-cover pointer-events-none rounded-[12px]"
                     src={uploadedPreview || imgReceiptCapture}
                   />
                 </div>
@@ -284,7 +383,7 @@ export default function ScanModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col gap-[6px] items-center group"
+              className="flex flex-col gap-[6px] items-center group cursor-pointer"
             >
               <div className="bg-[#16a34a] flex items-center justify-center p-[14px] rounded-[16px] group-hover:bg-[#15803d] transition-colors">
                 <img alt="Galeri" className="size-[24px]" src={imgGalleryIcon} />
@@ -296,9 +395,9 @@ export default function ScanModal({
 
             <button
               type="button"
-              onClick={() => triggerScanProcess()}
+              onClick={handleCaptureFromCamera}
               aria-label="Ambil Foto"
-              className="border-4 border-white shadow-md flex items-center justify-center p-[8px] rounded-full size-[80px] active:scale-95 transition-transform bg-white/40"
+              className="border-4 border-white shadow-md flex items-center justify-center p-[8px] rounded-full size-[80px] active:scale-95 transition-transform bg-white/40 cursor-pointer"
             >
               <div className="bg-white border border-black size-full rounded-full" />
             </button>
@@ -306,7 +405,7 @@ export default function ScanModal({
             <button
               type="button"
               onClick={() => onOpenManual?.('raw')}
-              className="flex flex-col gap-[6px] items-center group"
+              className="flex flex-col gap-[6px] items-center group cursor-pointer"
             >
               <div className="bg-[#16a34a] flex items-center justify-center p-[14px] rounded-[16px] group-hover:bg-[#15803d] transition-colors">
                 <img alt="Manual" className="size-[24px]" src={imgPlusIcon} />
@@ -324,12 +423,19 @@ export default function ScanModal({
       ===================================================================== */}
       {step === 'scanning' && (
         <div className="bg-[#f8fff4] relative w-full min-h-[925px] px-[26px] pt-[24px] pb-[32px]" data-node-id="23:2426">
+          <style>{`
+            @keyframes eatwiseScanLaser {
+              0% { top: 14px; }
+              50% { top: 196px; }
+              100% { top: 14px; }
+            }
+          `}</style>
           {/* TopHeader */}
           <div className="flex gap-[14px] items-center">
             <button
               type="button"
               onClick={() => setStep('capture')}
-              className="bg-white border border-[#e2e8f0] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center rounded-full size-[44px] shrink-0"
+              className="bg-white border border-[#e2e8f0] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center rounded-full size-[44px] shrink-0 cursor-pointer"
             >
               <img alt="Kembali" className="size-[20px]" src={imgBackArrow} />
             </button>
@@ -349,7 +455,7 @@ export default function ScanModal({
               <button
                 type="button"
                 onClick={() => setStep('capture')}
-                className="bg-white border border-[#e2e8f0] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center rounded-full size-[44px] shrink-0"
+                className="bg-white border border-[#e2e8f0] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center rounded-full size-[44px] shrink-0 cursor-pointer"
               >
                 <img alt="Kembali" className="size-[20px]" src={imgBackArrow} />
               </button>
@@ -374,57 +480,48 @@ export default function ScanModal({
           {/* ScanVisualCard */}
           <div className="bg-[#0b6623] flex flex-col h-[216px] items-center justify-end overflow-hidden rounded-[24px] shadow-md mt-[24px] relative">
             {/* AI Pill Tag */}
-            <div className="absolute backdrop-blur-[4px] bg-[rgba(51,65,85,0.9)] border border-[rgba(71,85,105,0.5)] flex gap-[6px] items-center left-[14px] px-[11px] py-[5px] rounded-full top-[14px] z-10">
+            <div className="absolute backdrop-blur-[4px] bg-[rgba(51,65,85,0.9)] border border-[rgba(71,85,105,0.5)] flex gap-[6px] items-center left-[14px] px-[11px] py-[5px] rounded-full top-[14px] z-20">
               <div className="bg-[#22c55e] rounded-full size-[8px]" />
               <span className="font-['Plus_Jakarta_Sans'] font-semibold text-[11px] leading-[16.5px] text-white tracking-[0.275px]">
                 Gemini Vision AI
               </span>
             </div>
 
-            {/* Glowing Laser Scan Line */}
-            <div className="absolute bg-[#22c55e] h-[2.5px] left-0 right-0 top-[20px] shadow-[0px_0px_12px_2px_rgba(34,197,94,0.7),0px_0px_4px_1px_#22c55e] animate-pulse" />
+            {/* Glowing Animated Laser Scan Line */}
+            <div
+              className="absolute bg-[#4be277] h-[3px] left-0 right-0 z-20 shadow-[0px_0px_14px_3px_rgba(75,226,119,0.85),0px_0px_6px_1px_#22c55e]"
+              style={{ animation: 'eatwiseScanLaser 2.2s ease-in-out infinite' }}
+            />
 
-            {/* Receipt Illustration Container */}
-            <div className="bg-white flex flex-col h-[180px] items-center pb-[8px] pt-[16px] px-[14px] relative rounded-t-[8px] shadow-xl w-[165px]">
-              {/* 3 Food rows (solid green borders) */}
-              <div className="pb-[8px] w-full">
-                <div className="bg-[rgba(240,253,244,0.3)] border border-[#10b981] flex flex-col gap-[4px] items-start px-[9px] py-[7px] rounded-[5px] w-full">
-                  <div className="bg-[#86efac] h-[4px] rounded-full w-[89.25px]" />
-                  <div className="flex gap-[4px] items-start">
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[39.66px]" />
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[29.75px]" />
+            {/* Captured Photo + Receipt Highlight Overlay Container */}
+            <div className="bg-white flex flex-col h-[186px] items-center justify-center relative rounded-t-[12px] shadow-xl w-[220px] overflow-hidden">
+              <img
+                alt="Hasil Foto"
+                className="absolute inset-0 size-full object-cover"
+                src={uploadedPreview || imgReceiptCapture}
+              />
+              {/* Translucent Detection Lines Overlay on top of captured photo */}
+              <div className="relative z-10 flex flex-col justify-between w-full h-full bg-black/15 p-[12px]">
+                <div className="flex flex-col gap-[6px] w-full">
+                  <div className="bg-[rgba(240,253,244,0.75)] border border-[#10b981] flex flex-col gap-[4px] items-start px-[8px] py-[5px] rounded-[5px] w-full">
+                    <div className="bg-[#22c55e] h-[4px] rounded-full w-[65%]" />
+                    <div className="flex gap-[4px] items-start">
+                      <div className="bg-[#86efac] h-[4px] rounded-full w-[35px]" />
+                      <div className="bg-[#86efac] h-[4px] rounded-full w-[25px]" />
+                    </div>
+                  </div>
+                  <div className="bg-[rgba(240,253,244,0.75)] border border-[#10b981] flex flex-col gap-[4px] items-start px-[8px] py-[5px] rounded-[5px] w-full">
+                    <div className="bg-[#22c55e] h-[4px] rounded-full w-[75%]" />
+                    <div className="flex gap-[4px] items-start">
+                      <div className="bg-[#86efac] h-[4px] rounded-full w-[28px]" />
+                      <div className="bg-[#86efac] h-[4px] rounded-full w-[36px]" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="pb-[8px] w-full">
-                <div className="bg-[rgba(240,253,244,0.3)] border border-[#10b981] flex flex-col gap-[4px] items-start px-[9px] py-[7px] rounded-[5px] w-full">
-                  <div className="bg-[#86efac] h-[4px] rounded-full w-[95.19px]" />
-                  <div className="flex gap-[4px] items-start">
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[29.75px]" />
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[39.66px]" />
-                  </div>
+                <div className="bg-[rgba(254,242,242,0.75)] border border-[#ef4444] border-dashed flex gap-[4px] items-center px-[8px] py-[5px] rounded-[5px] w-full">
+                  <div className="bg-[#f87171] h-[4px] rounded-full w-[55%]" />
+                  <div className="bg-[#fca5a5] h-[4px] rounded-full w-[25%]" />
                 </div>
-              </div>
-              <div className="pb-[10px] w-full">
-                <div className="bg-[rgba(240,253,244,0.3)] border border-[#10b981] flex flex-col gap-[4px] items-start px-[9px] py-[7px] rounded-[5px] w-full">
-                  <div className="bg-[#86efac] h-[4px] rounded-full w-[79.33px]" />
-                  <div className="flex gap-[4px] items-start">
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[39.66px]" />
-                    <div className="bg-[#bbf7d0] h-[4px] rounded-full w-[23.8px]" />
-                  </div>
-                </div>
-              </div>
-
-              {/* 2 Non-food rows (dashed red borders) */}
-              <div className="pb-[8px] w-full">
-                <div className="bg-[rgba(254,242,242,0.2)] border border-[#ef4444] border-dashed flex gap-[4px] items-start px-[9px] py-[7px] rounded-[5px] w-full">
-                  <div className="bg-[#fecaca] h-[4px] rounded-full w-[59.5px]" />
-                  <div className="bg-[#fecaca] h-[4px] rounded-full w-[29.75px]" />
-                </div>
-              </div>
-              <div className="bg-[rgba(254,242,242,0.2)] border border-[#ef4444] border-dashed flex gap-[4px] items-start px-[9px] py-[7px] rounded-[5px] w-full">
-                <div className="bg-[#fecaca] h-[4px] rounded-full w-[47.59px]" />
-                <div className="bg-[#fecaca] h-[4px] rounded-full w-[39.66px]" />
               </div>
             </div>
           </div>

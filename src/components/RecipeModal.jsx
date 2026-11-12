@@ -142,41 +142,29 @@ export default function RecipeModal({
     >
       {/* Header Section */}
       <div
-        className="flex gap-[14px] items-center justify-between px-[26px] pt-[35px]"
+        className="flex gap-[14px] items-center px-[26px] pt-[35px]"
         data-node-id="31:3174"
         data-name="HeaderSection"
       >
-        <div className="flex gap-[14px] items-center">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-white border border-[rgba(243,244,246,0.8)] border-solid cursor-pointer drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center p-px relative rounded-[9999px] shrink-0 size-[44px] hover:bg-gray-50 transition"
-            data-node-id="31:3175"
-            data-name="Button - Kembali"
-          >
-            <div className="relative shrink-0 size-[20px]">
-              <img alt="Kembali" className="block inset-0 max-w-none size-full" src={imgBackSvg} />
-            </div>
-          </button>
-          <div className="flex flex-col gap-px items-start" data-node-id="31:3179">
-            <h1 className="font-bold text-[#1a2e21] text-[19px] tracking-[-0.475px] leading-[23.75px]">
-              Resep Penyelamat Dapur
-            </h1>
-            <p className="font-normal text-[#64748b] text-[13px] leading-[16.25px]">
-              Dibuat AI dari bahan kritis
-            </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-white border border-[rgba(243,244,246,0.8)] border-solid cursor-pointer drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center p-px relative rounded-[9999px] shrink-0 size-[44px] hover:bg-gray-50 transition"
+          data-node-id="31:3175"
+          data-name="Button - Kembali"
+        >
+          <div className="relative shrink-0 size-[20px]">
+            <img alt="Kembali" className="block inset-0 max-w-none size-full" src={imgBackSvg} />
           </div>
+        </button>
+        <div className="flex flex-col gap-px items-start" data-node-id="31:3179">
+          <h1 className="font-bold text-[#1a2e21] text-[19px] tracking-[-0.475px] leading-[23.75px]">
+            Resep Penyelamat Dapur
+          </h1>
+          <p className="font-normal text-[#64748b] text-[13px] leading-[16.25px]">
+            Dibuat AI dari bahan kritis
+          </p>
         </div>
-
-        {onOpenCompostGuide && (
-          <button
-            type="button"
-            onClick={onOpenCompostGuide}
-            className="bg-[#dcfce7] text-[#146c38] font-semibold text-[11px] px-3 py-1.5 rounded-full shrink-0 cursor-pointer hover:bg-[#bbf7d0] transition"
-          >
-            Alih Kompos
-          </button>
-        )}
       </div>
 
       {/* User Prompt Section */}

@@ -75,8 +75,42 @@ export default function ManualInputModal({
   const [leftoverSubCat, setLeftoverSubCat] = useState('Sayur & sup');
   const [leftoverQuantity, setLeftoverQuantity] = useState(2);
   const [leftoverUnit, setLeftoverUnit] = useState('porsi');
+  const [cookedDateIso, setCookedDateIso] = useState('2026-11-07');
   const [cookedDateText, setCookedDateText] = useState('7 Nov 2026');
+  const [cookedTimeIso, setCookedTimeIso] = useState('12:30');
   const [cookedTimeText, setCookedTimeText] = useState('12.30');
+  const datePickerRef = useRef(null);
+  const timePickerRef = useRef(null);
+
+  const handleDateChange = (e) => {
+    const val = e.target.value;
+    setCookedDateIso(val);
+    if (!val) return;
+    const [yyyy, mm, dd] = val.split('-');
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des'
+    ];
+    const mIdx = Math.max(0, Math.min(11, parseInt(mm, 10) - 1));
+    setCookedDateText(`${parseInt(dd, 10)} ${months[mIdx]} ${yyyy}`);
+  };
+
+  const handleTimeChange = (e) => {
+    const val = e.target.value;
+    setCookedTimeIso(val);
+    if (!val) return;
+    setCookedTimeText(val.replace(':', '.'));
+  };
   const [leftoverStorage, setLeftoverStorage] = useState('chiller');
   const [leftoverExpiryDays, setLeftoverExpiryDays] = useState(2);
   const [customExpiryMode, setCustomExpiryMode] = useState(false);
@@ -529,7 +563,7 @@ export default function ManualInputModal({
 
             {/* Jumlah dan satuan */}
             <div className="flex items-start justify-between gap-[16px] w-full">
-              {/* Jumlah */}
+                {/* Jumlah */}
               <div className="flex flex-col gap-[10px] items-start">
                 <span className="font-normal leading-[16px] text-[#111827] text-[12px] tracking-[0.3px]">
                   Jumlah
@@ -538,9 +572,18 @@ export default function ManualInputModal({
                   <button
                     type="button"
                     onClick={() => setLeftoverQuantity((q) => Math.max(1, q - 1))}
-                    className="bg-white border border-[#e5e7eb] cursor-pointer flex items-center justify-center rounded-full size-[40px] active:scale-95"
+                    className="bg-white border border-[#e5e7eb] cursor-pointer flex items-center justify-center rounded-full size-[40px] active:scale-95 text-[#111827]"
+                    aria-label="Kurangi jumlah"
                   >
-                    <img alt="Kurangi" className="size-[16px]" src={imgLeftoverMinus} />
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path
+                        d="M3.33334 8H12.6667"
+                        stroke="#111827"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
                   <span className="font-semibold leading-[24px] text-[#111827] text-[16px] min-w-[16px] text-center">
                     {leftoverQuantity}
@@ -548,9 +591,18 @@ export default function ManualInputModal({
                   <button
                     type="button"
                     onClick={() => setLeftoverQuantity((q) => q + 1)}
-                    className="bg-white border border-[#e5e7eb] cursor-pointer flex items-center justify-center rounded-full size-[40px] active:scale-95"
+                    className="bg-white border border-[#e5e7eb] cursor-pointer flex items-center justify-center rounded-full size-[40px] active:scale-95 text-[#111827]"
+                    aria-label="Tambah jumlah"
                   >
-                    <img alt="Tambah" className="size-[16px]" src={imgLeftoverPlus} />
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path
+                        d="M8 3.33334V12.6667M3.33334 8H12.6667"
+                        stroke="#111827"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -589,31 +641,55 @@ export default function ManualInputModal({
               </span>
               <div className="flex gap-[10px] items-start w-full">
                 {/* Pilih tanggal */}
-                <div className="bg-white border border-[#e5e7eb] flex flex-1 h-[48px] items-center justify-between px-[14px] rounded-[16px] min-w-0">
-                  <div className="flex gap-[8px] items-center min-w-0 flex-1">
+                <div
+                  onClick={() => datePickerRef.current?.showPicker?.()}
+                  className="bg-white border border-[#e5e7eb] hover:border-[#0e7f3d] cursor-pointer flex flex-1 h-[48px] items-center justify-between px-[14px] rounded-[16px] min-w-0 relative transition"
+                >
+                  <div className="flex gap-[8px] items-center min-w-0 flex-1 pointer-events-none">
                     <img alt="" className="size-[16px] shrink-0" src={imgCalendarDays} />
-                    <input
-                      type="text"
-                      value={cookedDateText}
-                      onChange={(e) => setCookedDateText(e.target.value)}
-                      className="w-full bg-transparent outline-none font-medium text-[#111827] text-[13px]"
-                    />
+                    <span className="font-medium text-[#111827] text-[13px] truncate">
+                      {cookedDateText}
+                    </span>
                   </div>
-                  <img alt="" className="h-[15px] w-[9px] shrink-0" src={imgSortIndicator} />
+                  <img
+                    alt=""
+                    className="h-[15px] w-[9px] shrink-0 pointer-events-none"
+                    src={imgSortIndicator}
+                  />
+                  <input
+                    ref={datePickerRef}
+                    type="date"
+                    value={cookedDateIso}
+                    onChange={handleDateChange}
+                    aria-label="Pilih tanggal dimasak"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
                 </div>
 
                 {/* Pilih waktu */}
-                <div className="bg-white border border-[#e5e7eb] flex h-[48px] items-center justify-between px-[14px] rounded-[16px] w-[124px] shrink-0">
-                  <div className="flex gap-[8px] items-center">
+                <div
+                  onClick={() => timePickerRef.current?.showPicker?.()}
+                  className="bg-white border border-[#e5e7eb] hover:border-[#0e7f3d] cursor-pointer flex h-[48px] items-center justify-between px-[14px] rounded-[16px] w-[124px] shrink-0 relative transition"
+                >
+                  <div className="flex gap-[8px] items-center pointer-events-none">
                     <img alt="" className="size-[16px] shrink-0" src={imgClock} />
-                    <input
-                      type="text"
-                      value={cookedTimeText}
-                      onChange={(e) => setCookedTimeText(e.target.value)}
-                      className="w-[48px] bg-transparent outline-none font-medium text-[#111827] text-[13px]"
-                    />
+                    <span className="font-medium text-[#111827] text-[13px]">
+                      {cookedTimeText}
+                    </span>
                   </div>
-                  <img alt="" className="h-[15px] w-[9px] shrink-0" src={imgSortIndicator} />
+                  <img
+                    alt=""
+                    className="h-[15px] w-[9px] shrink-0 pointer-events-none"
+                    src={imgSortIndicator}
+                  />
+                  <input
+                    ref={timePickerRef}
+                    type="time"
+                    value={cookedTimeIso}
+                    onChange={handleTimeChange}
+                    aria-label="Pilih waktu dimasak"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
                 </div>
               </div>
             </div>
