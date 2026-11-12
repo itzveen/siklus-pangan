@@ -17,6 +17,7 @@ import dashPlus from '../assets/figma/dash_plus.svg';
 import dashSort from '../assets/figma/dash_sort.svg';
 import dashArrowGreen from '../assets/figma/dash_arrow_green.svg';
 import dashDivider from '../assets/figma/dash_divider.svg';
+import kulkasLeaf from '../assets/figma/kulkas_leaf.svg';
 
 export default function DashboardScreen({
   user,
@@ -94,59 +95,83 @@ export default function DashboardScreen({
     return food.image || foodBayam;
   };
 
-  /* ── 1. VARIANT: KULKAS KOSONG ── */
+  /* ── 1. VARIANT: KULKAS KOSONG (Figma node 44:476) ── */
   if (foodItems.length === 0) {
     return (
       <div
-        className="pb-28 pt-4 px-5 max-w-[402px] mx-auto animate-in fade-in duration-300"
+        className="pb-28 pt-2 px-5 space-y-6 max-w-[402px] mx-auto animate-in fade-in duration-300"
         style={{ fontFamily: 'Poppins, sans-serif' }}
+        data-node-id="44:476"
+        data-name="Kulkas Kosong"
       >
+        {/* Greeting Section (Figma node 44:409) */}
         <div className="space-y-1">
-          <h1 className="text-[24px] font-bold text-black tracking-tight">
+          <h1 className="text-[26px] font-extrabold text-[#11231b] tracking-[-0.65px] leading-[32.5px]">
             Halo, {user?.name || 'Budi'}!
           </h1>
-          <p className="text-[12px] text-[#4b5563]">Kulkasmu masih kosong.</p>
+          <p className="text-[15px] text-[#5e6d66] leading-[22.5px]">
+            Kulkasmu masih kosong.
+          </p>
         </div>
 
-        <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="w-44 h-44 rounded-full bg-[#EBF7EE] flex items-center justify-center border border-[#cdebd3]">
-            <svg viewBox="0 0 120 120" fill="none" className="w-28 h-28 text-[#166534]">
-              <rect x="35" y="20" width="50" height="80" rx="10" stroke="currentColor" strokeWidth="3" fill="#FFFFFF" />
-              <line x1="35" y1="50" x2="85" y2="50" stroke="currentColor" strokeWidth="2.5" />
-              <rect x="39" y="32" width="3" height="10" rx="1.5" fill="currentColor" />
-              <rect x="39" y="58" width="3" height="16" rx="1.5" fill="currentColor" />
-              <path d="M78 20C78 20 84 15 90 18C91 24 85 27 78 20Z" fill="#22C55E" stroke="#166534" strokeWidth="1.5" />
-            </svg>
+        {/* Empty State Graphic Circle (Figma node 44:415 & 44:416) */}
+        <div className="flex items-center justify-center pt-2">
+          <div className="w-[140px] h-[140px] rounded-full bg-[#dcf3e4] flex items-center justify-center relative flex-shrink-0">
+            {/* Refrigerator Illustration (Figma node 44:417: 60x78px) */}
+            <div className="w-[60px] h-[78px] rounded-[12px] border-[3px] border-[#136b34] flex flex-col justify-between py-[16px] px-[8px] relative bg-transparent">
+              {/* Shelf 1 Divider Line */}
+              <div className="w-full h-[3px] rounded-full bg-[#a7d8ba]" />
+              {/* Shelf 2 Divider Line */}
+              <div className="w-full h-[3px] rounded-full bg-[#a7d8ba]" />
+              {/* Fridge Handle */}
+              <div className="absolute right-[5px] top-[26px] w-[3px] h-[12px] rounded-full bg-[#136b34]" />
+            </div>
+
+            {/* Organic Leaf Accent at top-right of fridge (Figma node 44:423 & 44:424) */}
+            <div className="absolute top-[28px] right-[24px] w-[20px] h-[20px]">
+              <img src={kulkasLeaf} alt="" className="w-full h-full block" />
+            </div>
           </div>
-          <div className="space-y-1.5 max-w-[280px]">
-            <h2 className="text-[18px] font-bold text-black tracking-tight">
+        </div>
+
+        {/* Content & Action Buttons (Figma node 44:427) */}
+        <div className="space-y-6 text-center">
+          {/* Title & Description */}
+          <div className="space-y-2 max-w-[280px] mx-auto">
+            <h2 className="text-[20.5px] font-extrabold text-[#11231b] leading-[28px]">
               Mulai catat bahan makananmu
             </h2>
-            <p className="text-[12px] text-[#4b5563] leading-relaxed">
+            <p className="text-[13.5px] text-[#55675e] leading-[20px]">
               Foto struk atau isi kulkas, AI akan memisahkan makanan dari non-makanan secara otomatis.
             </p>
           </div>
-        </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={onOpenScan}
-            className="w-full py-3.5 px-5 bg-[#0e7a37] hover:bg-[#0b6623] text-white font-bold text-[14px] rounded-[22px] shadow-sm active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-          >
-            <span>Scan Struk / Kulkas (AI)</span>
-          </button>
-          <button
-            onClick={onOpenManual}
-            className="w-full py-3.5 px-5 bg-white text-[#0e7a37] font-bold text-[14px] rounded-[22px] border-2 border-[#0e7a37] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-          >
-            <span>Catat Manual</span>
-          </button>
-          <div className="flex justify-center pt-2">
+          {/* Action Buttons (Figma node 44:434) */}
+          <div className="space-y-3 pt-2">
+            {/* Button - Primary AI Scan Action (Figma node 44:435) */}
+            <button
+              onClick={onOpenScan}
+              className="w-full h-[52px] rounded-[16px] bg-[#137a38] hover:bg-[#0e682e] text-white font-bold text-[15px] shadow-[0px_4px_6px_rgba(19,122,56,0.2)] active:scale-[0.99] transition-all flex items-center justify-center"
+            >
+              Scan Struk / Kulkas (AI)
+            </button>
+
+            {/* Button - Secondary Manual Input Action (Figma node 44:437) */}
+            <button
+              onClick={onOpenManual}
+              className="w-full h-[52px] rounded-[16px] border border-[#137a38] text-[#137a38] font-bold text-[15px] bg-transparent hover:bg-[#dcf3e4]/30 active:scale-[0.99] transition-all flex items-center justify-center"
+            >
+              Catat Manual
+            </button>
+          </div>
+
+          {/* Quick Demo restore pill */}
+          <div className="pt-1">
             <button
               onClick={handlePopulateSampleData}
-              className="text-[12px] text-[#4b5563] hover:text-black underline font-medium"
+              className="text-[12px] text-[#55675e] hover:text-[#11231b] underline font-medium"
             >
-              Isi Data Contoh Demo
+              Isi Data Contoh Demo (7 Bahan)
             </button>
           </div>
         </div>
@@ -487,6 +512,19 @@ export default function DashboardScreen({
           </div>
         </div>
       )}
+
+      {/* ── Testing Utility: Toggle Kulkas Kosong ── */}
+      <div className="flex justify-center pt-1 pb-2">
+        <button
+          onClick={() => {
+            store.saveFoodItems([]);
+            if (onFoodItemsUpdated) onFoodItemsUpdated([]);
+          }}
+          className="text-[12px] text-[#55675e] hover:text-[#11231b] underline font-medium"
+        >
+          Simulasi Kulkas Kosong (0 Bahan)
+        </button>
+      </div>
     </div>
   );
 }
