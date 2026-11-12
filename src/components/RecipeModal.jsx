@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as store from "../services/storageService.js";
 import { generateRescueRecipe } from "../services/geminiService.js";
+import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Rescue Resep (31:3285) & Konfirmasi Masakan Selesai (59:518)
 import imgBackSvg from "../assets/figma/d20c9.svg";
@@ -17,6 +18,7 @@ export default function RecipeModal({
   expiringItems = null,
   initialShowSuccess = false,
   onClose,
+  onOpenCompostGuide,
   onSuccess
 }) {
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,22 @@ export default function RecipeModal({
     async function loadRecipe() {
       setLoading(true);
       try {
+        // Hit Backend API POST /api/ai/rescue-recipe
+        const apiRes = await fetchFromBackend("/ai/rescue-recipe", {
+          method: "POST",
+          body: JSON.stringify({ items: resolvedItems })
+        });
+        const recipeData = apiRes?.data || apiRes?.recipe || apiRes;
+        if (!cancelled && recipeData?.title) {
+          setRecipe(recipeData);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback ke service lokal jika offline
+      }
+
+      try {
         const res = await generateRescueRecipe(resolvedItems);
         if (!cancelled && res) {
           setRecipe(res);
@@ -78,8 +96,6 @@ export default function RecipeModal({
             aiResponse: res
           });
         }
-      } catch {
-        // Fallback recipe already in state
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -93,12 +109,17 @@ export default function RecipeModal({
 
   if (!isOpen) return null;
 
-  const handleFinishCooking = () => {
-    targetItems.forEach((item) => {
+  const handleFinishCooking = async () => {
+    for (const item of targetItems) {
       if (item.id) {
         store.markFoodAsCooked(item.id);
+        try {
+          await fetchFromBackend(`/foods/${item.id}/cook`, { method: "PATCH" });
+        } catch {
+          // Abaikan jika offline
+        }
       }
-    });
+    }
     setShowSuccessDialog(true);
   };
 
@@ -115,35 +136,47 @@ export default function RecipeModal({
 
   return (
     <div
-      className="bg-[#f8fff4] overflow-x-hidden relative rounded-[40px] w-full max-w-[402px] min-h-[980px] mx-auto shadow-xl font-['Poppins',sans-serif] pb-[32px]"
+      className="bg-[#f8fff4] overflow-x-hidden relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif] pb-[32px]"
       data-node-id="31:3285"
       data-name="Rescue Resep"
     >
       {/* Header Section */}
       <div
-        className="flex gap-[14px] items-center px-[26px] pt-[35px]"
+        className="flex gap-[14px] items-center justify-between px-[26px] pt-[35px]"
         data-node-id="31:3174"
         data-name="HeaderSection"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="bg-white border border-[rgba(243,244,246,0.8)] border-solid cursor-pointer drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center p-px relative rounded-[9999px] shrink-0 size-[44px] hover:bg-gray-50 transition"
-          data-node-id="31:3175"
-          data-name="Button - Kembali"
-        >
-          <div className="relative shrink-0 size-[20px]">
-            <img alt="Kembali" className="block inset-0 max-w-none size-full" src={imgBackSvg} />
+        <div className="flex gap-[14px] items-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-white border border-[rgba(243,244,246,0.8)] border-solid cursor-pointer drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center p-px relative rounded-[9999px] shrink-0 size-[44px] hover:bg-gray-50 transition"
+            data-node-id="31:3175"
+            data-name="Button - Kembali"
+          >
+            <div className="relative shrink-0 size-[20px]">
+              <img alt="Kembali" className="block inset-0 max-w-none size-full" src={imgBackSvg} />
+            </div>
+          </button>
+          <div className="flex flex-col gap-px items-start" data-node-id="31:3179">
+            <h1 className="font-bold text-[#1a2e21] text-[19px] tracking-[-0.475px] leading-[23.75px]">
+              Resep Penyelamat Dapur
+            </h1>
+            <p className="font-normal text-[#64748b] text-[13px] leading-[16.25px]">
+              Dibuat AI dari bahan kritis
+            </p>
           </div>
-        </button>
-        <div className="flex flex-col gap-px items-start" data-node-id="31:3179">
-          <h1 className="font-bold text-[#1a2e21] text-[19px] tracking-[-0.475px] leading-[23.75px]">
-            Resep Penyelamat Dapur
-          </h1>
-          <p className="font-normal text-[#64748b] text-[13px] leading-[16.25px]">
-            Dibuat AI dari bahan kritis
-          </p>
         </div>
+
+        {onOpenCompostGuide && (
+          <button
+            type="button"
+            onClick={onOpenCompostGuide}
+            className="bg-[#dcfce7] text-[#146c38] font-semibold text-[11px] px-3 py-1.5 rounded-full shrink-0 cursor-pointer hover:bg-[#bbf7d0] transition"
+          >
+            Alih Kompos
+          </button>
+        )}
       </div>
 
       {/* User Prompt Section */}
@@ -353,7 +386,7 @@ export default function RecipeModal({
       {/* Confirmation Dialog Overlay (Figma Frame 59:518) */}
       {showSuccessDialog && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(16,39,29,0.5)] rounded-[40px] p-[26px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,39,29,0.5)] p-[26px]"
           data-node-id="59:519"
           data-name="Lapisan konfirmasi"
         >

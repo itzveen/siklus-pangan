@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as store from "../services/storageService.js";
+import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Siklus Kompos (32:3581)
 import imgChatBubbleNav from "../assets/figma/d9083.png";
@@ -29,7 +30,7 @@ import imgDetailCircleCheck from "../assets/figma/21f64.svg";
 import imgDetailBackGreen from "../assets/figma/bae43.svg";
 
 export default function CompostPage({
-  initialView = "cycle", // "cycle" | "harvest" | "harvest-success" | "detail"
+  initialView = "cycle",
   onNavigateTab,
   onOpenScan
 }) {
@@ -46,13 +47,28 @@ export default function CompostPage({
   const [harvestWeight, setHarvestWeight] = useState(3.5);
   const [selectedHarvestDetail, setSelectedHarvestDetail] = useState(null);
 
-  const refreshData = () => {
+  const refreshData = async () => {
     const currentBatches = store.getCompostBatches();
     const currentHarvests = store.getHarvestHistory();
     setBatches(currentBatches);
     setHarvests(currentHarvests);
     if (currentHarvests.length > 0 && !selectedHarvestDetail) {
       setSelectedHarvestDetail(currentHarvests[0]);
+    }
+
+    try {
+      // Hit Backend API GET /api/compost/batches
+      const apiRes = await fetchFromBackend("/compost/batches");
+      const activeBatches = apiRes?.activeBatches || apiRes?.data?.activeBatches;
+      const harvestHistory = apiRes?.harvestHistory || apiRes?.data?.harvestHistory;
+      if (Array.isArray(activeBatches) && activeBatches.length > 0) {
+        setBatches(activeBatches);
+      }
+      if (Array.isArray(harvestHistory) && harvestHistory.length > 0) {
+        setHarvests(harvestHistory);
+      }
+    } catch {
+      // Gunakan data localStorage jika offline
     }
   };
 
@@ -70,23 +86,41 @@ export default function CompostPage({
     }
   }, [initialView]);
 
-  const handleLockBatch = (batchId) => {
+  const handleLockBatch = async (batchId) => {
     const updated = store.lockBatchForCuring(batchId);
     setBatches(updated);
+    try {
+      await fetchFromBackend(`/compost/${batchId}/lock`, { method: "POST" });
+    } catch {
+      // Abaikan jika offline
+    }
   };
 
-  const handleFastForwardBatch = (batch) => {
+  const handleFastForwardBatch = async (batch) => {
     const updated = store.fastForwardBatchDemo(batch.id, 14);
     setBatches(updated);
+    try {
+      await fetchFromBackend(`/compost/${batch.id}/simulate`, { method: "POST" });
+    } catch {
+      // Abaikan jika offline
+    }
     const target = updated.find((b) => b.id === batch.id) || batch;
     setSelectedBatchForHarvest(target);
     setHarvestWeight(3.5);
     setSubView("harvest");
   };
 
-  const handleRecordHarvest = () => {
+  const handleRecordHarvest = async () => {
     const targetId = selectedBatchForHarvest?.id || "batch-2";
     const newRecord = store.harvestBatch(targetId, harvestWeight);
+    try {
+      await fetchFromBackend(`/compost/${targetId}/harvest`, {
+        method: "POST",
+        body: JSON.stringify({ weightKg: harvestWeight })
+      });
+    } catch {
+      // Abaikan jika offline
+    }
     refreshData();
     setSelectedHarvestDetail(newRecord);
     setShowHarvestSuccessModal(true);
@@ -97,10 +131,19 @@ export default function CompostPage({
     setSubView("cycle");
   };
 
-  const handleOpenDetail = (harvestItem) => {
+  const handleOpenDetail = async (harvestItem) => {
     const detail = store.getHarvestDetail(harvestItem?.id);
     setSelectedHarvestDetail(detail || harvestItem);
     setSubView("detail");
+    try {
+      const apiRes = await fetchFromBackend(`/compost/harvests/${harvestItem?.id || "batch-0"}`);
+      const detailData = apiRes?.data || apiRes;
+      if (detailData?.title) {
+        setSelectedHarvestDetail(detailData);
+      }
+    } catch {
+      // Gunakan detail lokal
+    }
   };
 
   // ============================================================================
@@ -122,7 +165,7 @@ export default function CompostPage({
 
     return (
       <div
-        className="bg-[#f8fff4] flex flex-col gap-[16px] items-start overflow-x-hidden px-[26px] py-[30px] relative rounded-[40px] w-full max-w-[402px] min-h-[887px] mx-auto shadow-xl font-['Poppins',sans-serif]"
+        className="bg-[#f8fff4] flex flex-col gap-[16px] items-start overflow-x-hidden px-[26px] py-[30px] relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif]"
         data-node-id="55:63"
         data-name="Detail Riwayat Panen"
       >
@@ -307,7 +350,7 @@ export default function CompostPage({
 
     return (
       <div
-        className="bg-[#f8fff4] overflow-x-hidden relative rounded-[40px] w-full max-w-[393px] min-h-[887px] mx-auto shadow-xl font-['Poppins',sans-serif] px-[21px] py-[30px] flex flex-col justify-between"
+        className="bg-[#f8fff4] overflow-x-hidden relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif] px-[21px] py-[30px] flex flex-col justify-between"
         data-node-id="45:1108"
         data-name="Panen kompos"
       >
@@ -486,12 +529,12 @@ export default function CompostPage({
         {/* Panen Berhasil Dicatat Dialog (Figma Frame 62:75) */}
         {showHarvestSuccessModal && (
           <div
-            className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(20,41,31,0.5)] rounded-[40px] p-[24px]"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,41,31,0.5)] p-[24px]"
             data-node-id="62:75"
             data-name="Panen berhasil dicatat"
           >
             <div
-              className="bg-white flex flex-col gap-[24px] items-center p-[24px] rounded-[28px] shadow-[0px_16px_48px_0px_rgba(12,41,31,0.15)] w-full"
+              className="bg-white flex flex-col gap-[24px] items-center p-[24px] rounded-[28px] shadow-[0px_16px_48px_0px_rgba(12,41,31,0.15)] w-full max-w-[350px]"
               data-node-id="62:135"
               data-name="Dialog sukses"
             >
@@ -538,7 +581,7 @@ export default function CompostPage({
 
   return (
     <div
-      className="bg-[#f8fff4] overflow-x-hidden relative rounded-[40px] w-full max-w-[402px] min-h-[1152px] mx-auto shadow-xl font-['Poppins',sans-serif] pb-[100px]"
+      className="bg-[#f8fff4] overflow-x-hidden relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif] pb-[100px]"
       data-node-id="32:3581"
       data-name="Siklus Kompos"
     >
@@ -823,7 +866,7 @@ export default function CompostPage({
       </div>
 
       {/* Bottom Navigation Bar (Figma Frame 32:3581 bottom nav) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white h-[71px] border-t border-gray-100 flex items-center justify-between px-[24px] rounded-b-[40px]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[402px] bg-white h-[71px] border-t border-gray-100 flex items-center justify-between px-[24px] z-40">
         <button
           type="button"
           onClick={() => onNavigateTab && onNavigateTab("pantry")}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as store from "../services/storageService.js";
 import { analyzeCompostAction } from "../services/geminiService.js";
+import { fetchFromBackend } from "../config/api.js";
 
 // Figma Assets for Alih ke kompos (32:3286) & Konfirmasi simpan ke wadah kompos (61:514)
 import imgBackSvg from "../assets/figma/4d9b8.svg";
@@ -26,7 +27,7 @@ export default function CompostModal({
     weightKg: 0.3
   });
   const [batches, setBatches] = useState([]);
-  const [selectedBatchOption, setSelectedBatchOption] = useState("active"); // "active" | "new"
+  const [selectedBatchOption, setSelectedBatchOption] = useState("active");
   const [savedBatchLabel, setSavedBatchLabel] = useState("Batch #1 (Wadah Dapur)");
   const [analysis, setAnalysis] = useState({
     wasteType: "Protein Nabati & Nitrogen Tinggi",
@@ -73,9 +74,30 @@ export default function CompostModal({
     let cancelled = false;
     async function loadCompostGuide() {
       setLoading(true);
+      const profile = store.getUserProfile();
+      const householdType = profile?.householdType || "house";
+
       try {
-        const profile = store.getUserProfile();
-        const res = await analyzeCompostAction(resolvedFood, profile?.householdType || "house");
+        // Hit Backend API POST /api/ai/compost-guide
+        const apiRes = await fetchFromBackend("/ai/compost-guide", {
+          method: "POST",
+          body: JSON.stringify({
+            foodName: resolvedFood.name,
+            householdType
+          })
+        });
+        const guideData = apiRes?.data || apiRes?.analysis || apiRes;
+        if (!cancelled && guideData?.steps) {
+          setAnalysis(guideData);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback ke service lokal
+      }
+
+      try {
+        const res = await analyzeCompostAction(resolvedFood, householdType);
         if (!cancelled && res) {
           setAnalysis(res);
           store.addAiHistoryEntry({
@@ -89,8 +111,6 @@ export default function CompostModal({
             aiResponse: res
           });
         }
-      } catch {
-        // Fallback analysis already in state
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -107,18 +127,45 @@ export default function CompostModal({
   const activeFillingBatch = batches.find((b) => b.stage === "filling");
   const curingBatches = batches.filter((b) => b.stage === "curing");
 
-  const handleSaveToCompost = () => {
+  const handleSaveToCompost = async () => {
     if (selectedBatchOption === "active" && activeFillingBatch) {
       const label = `${activeFillingBatch.title} (${activeFillingBatch.subtitle || "Wadah Dapur"})`;
       setSavedBatchLabel(label);
       const updated = store.addFoodToCompost(targetFood, activeFillingBatch.id);
       setBatches(updated);
+      try {
+        await fetchFromBackend("/compost/add-item", {
+          method: "POST",
+          body: JSON.stringify({
+            foodId: targetFood.id,
+            foodName: targetFood.name,
+            weightKg: targetFood.weightKg || 0.3,
+            batchId: activeFillingBatch.id,
+            option: "existing"
+          })
+        });
+      } catch {
+        // Abaikan jika offline
+      }
     } else {
       const nextNum = batches.length + 1;
       const newTitle = `Batch #${nextNum}`;
       setSavedBatchLabel(`${newTitle} (Wadah Dapur Baru)`);
       const updated = store.addFoodToCompost(targetFood, null, newTitle);
       setBatches(updated);
+      try {
+        await fetchFromBackend("/compost/add-item", {
+          method: "POST",
+          body: JSON.stringify({
+            foodId: targetFood.id,
+            foodName: targetFood.name,
+            weightKg: targetFood.weightKg || 0.3,
+            option: "new"
+          })
+        });
+      } catch {
+        // Abaikan jika offline
+      }
     }
     setShowSuccessDialog(true);
   };
@@ -131,7 +178,7 @@ export default function CompostModal({
 
   return (
     <div
-      className="bg-[#f8fff4] overflow-x-hidden relative rounded-[40px] w-full max-w-[402px] min-h-[980px] mx-auto shadow-xl font-['Poppins',sans-serif] pb-[28px]"
+      className="bg-[#f8fff4] overflow-x-hidden relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif] pb-[28px]"
       data-node-id="32:3286"
       data-name="Alih ke kompos"
     >
@@ -391,7 +438,7 @@ export default function CompostModal({
       {/* Confirmation Dialog Overlay (Figma Frame 61:514) */}
       {showSuccessDialog && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.4)] rounded-[40px] p-[24px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.4)] p-[24px]"
           data-node-id="61:515"
           data-name="Lapisan konfirmasi"
         >
