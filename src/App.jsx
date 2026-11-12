@@ -8,6 +8,7 @@ import TopHeader from './components/TopHeader.jsx';
 import BottomNavBar from './components/BottomNavBar.jsx';
 import DashboardScreen from './components/DashboardScreen.jsx';
 import NotificationScreen from './components/NotificationScreen.jsx';
+import LogoutDialog from './components/LogoutDialog.jsx';
 
 // Modals from Teammate (Scan & Manual Input)
 import ScanModal from './components/ScanModal.jsx';
@@ -19,7 +20,8 @@ export default function App() {
   const [user, setUser] = useState(store.getUserProfile());
   const [currentTab, setCurrentTab] = useState('pantry'); // 'pantry' | 'notifications' | 'ai' | 'compost' | 'settings'
 
-  // Modals
+  // Dialogs & Modals
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualInitialTab, setManualInitialTab] = useState('raw'); // 'raw' | 'leftover'
@@ -51,6 +53,12 @@ export default function App() {
     setCurrentTab('pantry');
   };
 
+  const handleConfirmLogout = () => {
+    const updated = store.logoutUser();
+    setUser(updated);
+    setShowLogoutDialog(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center selection:bg-emerald-100 selection:text-emerald-900 font-sans">
       {/* Mobile Application Frame: 402px wide, matching Figma screen size */}
@@ -59,7 +67,7 @@ export default function App() {
           /* 1. Splash Screen */
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : !user?.isLoggedIn ? (
-          /* 2. Landing Screen */
+          /* 2. Landing Screen with Google OAuth */
           <LandingScreen onLoginSuccess={handleLoginSuccess} />
         ) : currentTab === 'notifications' ? (
           /* 4. Notification Screen */
@@ -75,13 +83,7 @@ export default function App() {
               user={user}
               unreadCount={unreadNotifCount}
               onOpenNotifications={() => setCurrentTab('notifications')}
-              onOpenSettings={() => {
-                // If user clicks avatar, prompt quick logout for testing
-                if (window.confirm('Ingin keluar akun (Logout) untuk menguji Landing Screen?')) {
-                  const updated = store.logoutUser();
-                  setUser(updated);
-                }
-              }}
+              onOpenSettings={() => setShowLogoutDialog(true)}
             />
 
             <main className="flex-1">
@@ -104,11 +106,24 @@ export default function App() {
 
             <BottomNavBar
               activeTab={currentTab}
-              onSelectTab={(tab) => setCurrentTab(tab)}
+              onSelectTab={(tab) => {
+                if (tab === 'settings') {
+                  setShowLogoutDialog(true);
+                } else {
+                  setCurrentTab(tab);
+                }
+              }}
               onOpenScan={() => setShowScanModal(true)}
             />
           </>
         )}
+
+        {/* Dialog Logout (Figma node 45:921 - 45:942) */}
+        <LogoutDialog
+          isOpen={showLogoutDialog}
+          onCancel={() => setShowLogoutDialog(false)}
+          onConfirm={handleConfirmLogout}
+        />
 
         {/* Teammate Modals */}
         {showScanModal && (

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import * as store from '../services/storageService.js';
 
 // Assets from Figma node 8:10 "Landing Screen"
@@ -7,17 +8,81 @@ import landingBg from '../assets/figma/landing_bg.svg';
 import landingFridge from '../assets/figma/landing_fridge.svg';
 import landingGoogle from '../assets/figma/landing_google.svg';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
 export default function LandingScreen({ onLoginSuccess }) {
-  const handleGoogleLogin = () => {
-    const defaultProfile = store.getUserProfile();
-    const updated = store.saveUserProfile({
-      ...defaultProfile,
-      name: defaultProfile.name || 'Budi',
-      fullName: defaultProfile.fullName || 'Budi Santoso',
-      email: defaultProfile.email || 'budi@gmail.com',
-      isLoggedIn: true
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const googleBtnHiddenRef = useRef(null);
+
+  // Initialize real Google Identity Services if client ID is configured
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: (response) => {
+        try {
+          const decoded = jwtDecode(response.credential);
+          const current = store.getUserProfile();
+          const updated = store.saveUserProfile({
+            ...current,
+            name: decoded.given_name || decoded.name || 'Pengguna',
+            fullName: decoded.name || 'Pengguna EatWise',
+            email: decoded.email || 'pengguna@gmail.com',
+            picture: decoded.picture || null,
+            isLoggedIn: true
+          });
+          if (onLoginSuccess) onLoginSuccess(updated);
+        } catch (err) {
+          console.error('Gagal decode Google JWT:', err);
+          fallbackLogin();
+        }
+      }
     });
-    if (onLoginSuccess) onLoginSuccess(updated);
+
+    if (googleBtnHiddenRef.current) {
+      window.google.accounts.id.renderButton(googleBtnHiddenRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 280
+      });
+    }
+  }, []);
+
+  const fallbackLogin = () => {
+    setIsLoggingIn(true);
+    setTimeout(() => {
+      const defaultProfile = store.getUserProfile();
+      const updated = store.saveUserProfile({
+        ...defaultProfile,
+        name: defaultProfile.name || 'Budi',
+        fullName: defaultProfile.fullName || 'Budi Santoso',
+        email: defaultProfile.email || 'budi@gmail.com',
+        isLoggedIn: true
+      });
+      setIsLoggingIn(false);
+      if (onLoginSuccess) onLoginSuccess(updated);
+    }, 400);
+  };
+
+  const handleGoogleClick = () => {
+    // If real Google Client ID is configured and GIS is available, trigger prompt
+    if (GOOGLE_CLIENT_ID && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            fallbackLogin();
+          }
+        });
+        return;
+      } catch (e) {
+        fallbackLogin();
+        return;
+      }
+    }
+
+    // Default fast login for demo & testing
+    fallbackLogin();
   };
 
   return (
@@ -30,6 +95,9 @@ export default function LandingScreen({ onLoginSuccess }) {
       data-node-id="8:10"
       data-name="Landing Screen"
     >
+      {/* Hidden container for Google GIS auto-rendered button if needed */}
+      <div ref={googleBtnHiddenRef} className="hidden" />
+
       {/* ── 1. Top Logo EatWise (Figma node 16:373 & 16:397) ── */}
       <div className="absolute top-[24px] left-[26px] flex items-center gap-2 z-10">
         <div
@@ -90,16 +158,17 @@ export default function LandingScreen({ onLoginSuccess }) {
         {/* Google Login Button (Figma node 16:508: top 737px, 279px width, rounded 22px) */}
         <div className="pb-2">
           <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-[22px] bg-[rgba(255,255,255,0.9)] hover:bg-slate-50 active:scale-[0.98] transition-all border border-[#0b6623] shadow-xs"
+            onClick={handleGoogleClick}
+            disabled={isLoggingIn}
+            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-[22px] bg-[rgba(255,255,255,0.9)] hover:bg-slate-50 active:scale-[0.98] transition-all border border-[#0b6623] shadow-xs cursor-pointer disabled:opacity-75"
           >
             <img
               src={landingGoogle}
               alt="Google"
               className="w-4 h-4 flex-shrink-0"
             />
-            <span className="text-[#14532d] text-[14px] font-medium">
-              Masuk dengan Google
+            <span className="font-semibold text-[15px] text-[#0b6623]">
+              {isLoggingIn ? 'Menghubungkan...' : 'Masuk dengan Google'}
             </span>
           </button>
         </div>
