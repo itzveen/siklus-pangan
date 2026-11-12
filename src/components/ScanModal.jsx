@@ -108,13 +108,23 @@ export default function ScanModal({
     }
 
     let cancelled = false;
-    async function startFrontCamera() {
+    async function startRearCamera() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user' },
-          audio: false
-        });
+        let stream = null;
+        try {
+          // Prioritaskan kamera belakang (environment)
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { exact: 'environment' } },
+            audio: false
+          });
+        } catch {
+          // Jika di laptop atau emulator hanya ada 1 kamera, gunakan ideal environment
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+          });
+        }
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -130,7 +140,7 @@ export default function ScanModal({
       }
     }
 
-    startFrontCamera();
+    startRearCamera();
     return () => {
       cancelled = true;
       stopCamera();
@@ -145,13 +155,10 @@ export default function ScanModal({
       canvas.height = videoRef.current.videoHeight || 480;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Flip horizontal so selfie/front camera matches preview
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setUploadedPreview(dataUrl);
-        setUploadedFileName('Foto_Kamera_Depan.jpg');
+        setUploadedFileName('Foto_Struk_Kamera.jpg');
         capturedBase64 = dataUrl.split(',')[1];
       }
     }
@@ -336,13 +343,13 @@ export default function ScanModal({
             {/* Viewfinder Area */}
             <div className="py-[12px] mt-[4px]">
               <div className="bg-[#0b6623] flex flex-col h-[410px] items-center justify-between overflow-hidden p-[24px] relative rounded-[32px] w-full">
-                {/* Live Front Camera Stream */}
+                {/* Live Rear Camera Stream */}
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 size-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                  className={`absolute inset-0 size-full object-cover transition-opacity duration-300 ${
                     cameraReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
                   }`}
                 />
