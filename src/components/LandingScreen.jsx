@@ -12,40 +12,60 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 export default function LandingScreen({ onLoginSuccess }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const googleBtnHiddenRef = useRef(null);
+  const [gisReady, setGisReady] = useState(false);
+  const googleBtnOverlayRef = useRef(null);
 
   // Initialize real Google Identity Services if client ID is configured
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
+    if (!GOOGLE_CLIENT_ID) return;
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response) => {
-        try {
-          const decoded = jwtDecode(response.credential);
-          const current = store.getUserProfile();
-          const updated = store.saveUserProfile({
-            ...current,
-            name: decoded.given_name || decoded.name || 'Pengguna',
-            fullName: decoded.name || 'Pengguna EatWise',
-            email: decoded.email || 'pengguna@gmail.com',
-            picture: decoded.picture || null,
-            isLoggedIn: true
-          });
-          if (onLoginSuccess) onLoginSuccess(updated);
-        } catch (err) {
-          console.error('Gagal decode Google JWT:', err);
-          fallbackLogin();
-        }
+    const initGoogleIdentity = () => {
+      if (!window.google?.accounts?.id || !googleBtnOverlayRef.current) return false;
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (response) => {
+            try {
+              const decoded = jwtDecode(response.credential);
+              const current = store.getUserProfile();
+              const updated = store.saveUserProfile({
+                ...current,
+                name: decoded.given_name || decoded.name || 'Pengguna',
+                fullName: decoded.name || 'Pengguna EatWise',
+                email: decoded.email || 'pengguna@gmail.com',
+                picture: decoded.picture || null,
+                isLoggedIn: true
+              });
+              if (onLoginSuccess) onLoginSuccess(updated);
+            } catch (err) {
+              console.error('Gagal decode Google JWT:', err);
+              fallbackLogin();
+            }
+          }
+        });
+
+        window.google.accounts.id.renderButton(googleBtnOverlayRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 300,
+          text: 'signin_with',
+          shape: 'pill'
+        });
+
+        setGisReady(true);
+        return true;
+      } catch (err) {
+        console.warn('Google Identity initialization error:', err);
+        return false;
       }
-    });
+    };
 
-    if (googleBtnHiddenRef.current) {
-      window.google.accounts.id.renderButton(googleBtnHiddenRef.current, {
-        theme: 'outline',
-        size: 'large',
-        width: 280
-      });
+    if (!initGoogleIdentity()) {
+      const interval = setInterval(() => {
+        if (initGoogleIdentity()) clearInterval(interval);
+      }, 300);
+      return () => clearInterval(interval);
     }
   }, []);
 
@@ -65,12 +85,13 @@ export default function LandingScreen({ onLoginSuccess }) {
     }, 400);
   };
 
-  const handleGoogleClick = () => {
-    // If real Google Client ID is configured and GIS is available, trigger prompt
+  const handleCustomButtonClick = () => {
+    // If real Google Client ID is configured and GIS is available, trigger One-Tap prompt
     if (GOOGLE_CLIENT_ID && window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // If prompt is skipped or blocked, fallback to demo login
             fallbackLogin();
           }
         });
@@ -81,7 +102,7 @@ export default function LandingScreen({ onLoginSuccess }) {
       }
     }
 
-    // Default fast login for demo & testing
+    // Default demo login if no Google Client ID is set in .env
     fallbackLogin();
   };
 
@@ -95,9 +116,6 @@ export default function LandingScreen({ onLoginSuccess }) {
       data-node-id="8:10"
       data-name="Landing Screen"
     >
-      {/* Hidden container for Google GIS auto-rendered button if needed */}
-      <div ref={googleBtnHiddenRef} className="hidden" />
-
       {/* ── 1. Top Logo EatWise (Figma node 16:373 & 16:397) ── */}
       <div className="absolute top-[24px] left-[26px] flex items-center gap-2 z-10">
         <div
@@ -127,13 +145,11 @@ export default function LandingScreen({ onLoginSuccess }) {
 
       {/* ── 2. Center Illustration (Figma node 16:399: top 185px, 286x252px) ── */}
       <div className="absolute top-[185px] left-1/2 -translate-x-1/2 w-[286px] h-[252px] rounded-[28px] overflow-hidden flex items-center justify-center z-10">
-        {/* Background container SVG */}
         <img
           src={landingBg}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />
-        {/* Vector illustration of fridge, fruit, and compost bin */}
         <img
           src={landingFridge}
           alt="EatWise Refrigerator & Compost Cycle"
@@ -155,10 +171,12 @@ export default function LandingScreen({ onLoginSuccess }) {
           </p>
         </div>
 
-        {/* Google Login Button (Figma node 16:508: top 737px, 279px width, rounded 22px) */}
-        <div className="pb-2">
+        {/* Google Login Button Container */}
+        <div className="pb-2 relative">
+          {/* Custom Figma Styled Button */}
           <button
-            onClick={handleGoogleClick}
+            type="button"
+            onClick={handleCustomButtonClick}
             disabled={isLoggingIn}
             className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-[22px] bg-[rgba(255,255,255,0.9)] hover:bg-slate-50 active:scale-[0.98] transition-all border border-[#0b6623] shadow-xs cursor-pointer disabled:opacity-75"
           >
@@ -171,6 +189,16 @@ export default function LandingScreen({ onLoginSuccess }) {
               {isLoggingIn ? 'Menghubungkan...' : 'Masuk dengan Google'}
             </span>
           </button>
+
+          {/* Real Google Identity Services Button overlay when Client ID exists */}
+          {GOOGLE_CLIENT_ID && (
+            <div
+              ref={googleBtnOverlayRef}
+              className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer flex items-center justify-center [&>div]:w-full [&>div]:h-full [&>iframe]:w-full [&>iframe]:h-full"
+              style={{ zIndex: 20 }}
+              title="Masuk dengan Google"
+            />
+          )}
         </div>
       </div>
     </div>
