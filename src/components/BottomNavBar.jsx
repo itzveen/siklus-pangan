@@ -1,57 +1,107 @@
 import React from 'react';
-import { Home, Sparkles, Camera, Sprout, Settings } from 'lucide-react';
+
+// Navigation assets from Figma node 16:523
+import navPantry from '../assets/figma/nav_pantry.svg';
+import navChat from '../assets/figma/nav_chat.png';
+import navScan from '../assets/figma/nav_scan.svg';
+import navKompos from '../assets/figma/nav_kompos.svg';
+import navSettings from '../assets/figma/nav_settings.svg';
 
 export default function BottomNavBar({ activeTab, onSelectTab, onOpenScan }) {
-  const tabs = [
-    { id: 'pantry', label: 'Pantry', icon: Home },
-    { id: 'ai', label: 'Tanya AI', icon: Sparkles },
-    { id: 'scan', label: 'Scan', icon: Camera, isCenter: true },
-    { id: 'compost', label: 'Kompos', icon: Sprout },
-    { id: 'settings', label: 'Atur', icon: Settings }
-  ];
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 max-w-[440px] mx-auto shadow-lg">
-      <div className="flex items-center justify-around px-2 py-1.5 h-16 relative">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#cdebd3]/60 max-w-[402px] mx-auto shadow-md">
+      <div className="flex items-center justify-between px-4 h-[71px] relative">
+        {/* 1. Pantry */}
+        <button
+          onClick={() => onSelectTab('pantry')}
+          className="flex flex-col items-center justify-center w-[56px] transition-all"
+        >
+          <div className="w-[30px] h-[30px] flex items-center justify-center">
+            <img src={navPantry} alt="Pantry" className="w-[24px] h-[24px]" />
+          </div>
+          <span
+            className={`text-[10px] tracking-tight mt-0.5 ${
+              activeTab === 'pantry' ? 'font-extrabold text-[#0e7a37]' : 'font-bold text-[#4b5563]'
+            }`}
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+          >
+            Pantry
+          </span>
+        </button>
 
-          if (tab.isCenter) {
-            return (
-              <div key={tab.id} className="relative -top-4 flex flex-col items-center">
-                <button
-                  onClick={onOpenScan}
-                  className="w-14 h-14 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white flex items-center justify-center shadow-lg shadow-emerald-700/40 ring-4 ring-white active:scale-95 transition-all"
-                  aria-label="Scan Struk / AI"
-                >
-                  <Icon className="w-7 h-7" />
-                </button>
-                <span className="text-[10px] font-bold text-emerald-800 mt-1">Scan</span>
-              </div>
-            );
-          }
+        {/* 2. Tanya AI */}
+        <button
+          onClick={() => onSelectTab('ai')}
+          className="flex flex-col items-center justify-center w-[56px] transition-all"
+        >
+          <div className="w-[30px] h-[26px] flex items-center justify-center">
+            <img src={navChat} alt="Tanya AI" className="w-[26px] h-[22px] object-contain" />
+          </div>
+          <span
+            className={`text-[10px] tracking-tight mt-0.5 ${
+              activeTab === 'ai' ? 'font-extrabold text-[#0e7a37]' : 'font-bold text-[#4b5563]'
+            }`}
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+          >
+            Tanya AI
+          </span>
+        </button>
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors relative ${
-                isActive ? 'text-emerald-700' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50' : ''}`}>
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
-              </div>
-              <span className={`text-[10px] mt-0.5 tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
-                {tab.label}
-              </span>
-              {isActive && (
-                <span className="absolute bottom-1 w-1.5 h-1.5 bg-emerald-600 rounded-full" />
-              )}
-            </button>
-          );
-        })}
+        {/* 3. Scan (Center Elevated Action Button) */}
+        <div className="relative -top-5 flex flex-col items-center">
+          <button
+            onClick={onOpenScan}
+            className="w-[56px] h-[56px] rounded-full bg-[#0e7a37] border-3 border-white flex items-center justify-center shadow-lg active:scale-95 transition-all"
+            style={{
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.15)'
+            }}
+            aria-label="Scan AI"
+          >
+            <img src={navScan} alt="Scan" className="w-[24px] h-[24px]" />
+          </button>
+          <span
+            className="text-[10px] font-bold text-[#0e7a37] mt-1"
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+          >
+            Scan
+          </span>
+        </div>
+
+        {/* 4. Kompos */}
+        <button
+          onClick={() => onSelectTab('compost')}
+          className="flex flex-col items-center justify-center w-[56px] transition-all"
+        >
+          <div className="w-[30px] h-[30px] flex items-center justify-center">
+            <img src={navKompos} alt="Kompos" className="w-[22px] h-[22px]" />
+          </div>
+          <span
+            className={`text-[10px] tracking-tight mt-0.5 ${
+              activeTab === 'compost' ? 'font-extrabold text-[#0e7a37]' : 'font-bold text-[#4b5563]'
+            }`}
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+          >
+            Kompos
+          </span>
+        </button>
+
+        {/* 5. Atur */}
+        <button
+          onClick={() => onSelectTab('settings')}
+          className="flex flex-col items-center justify-center w-[56px] transition-all"
+        >
+          <div className="w-[30px] h-[30px] flex items-center justify-center">
+            <img src={navSettings} alt="Atur" className="w-[22px] h-[22px]" />
+          </div>
+          <span
+            className={`text-[10px] tracking-tight mt-0.5 ${
+              activeTab === 'settings' ? 'font-extrabold text-[#0e7a37]' : 'font-bold text-[#4b5563]'
+            }`}
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+          >
+            Atur
+          </span>
+        </button>
       </div>
     </nav>
   );

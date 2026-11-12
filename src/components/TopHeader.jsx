@@ -1,6 +1,6 @@
 import React from 'react';
-import EatWiseLogo from './EatWiseLogo.jsx';
-import { Bell } from 'lucide-react';
+import landingIcon from '../assets/figma/landing_icon.svg';
+import dashBell from '../assets/figma/dash_bell.svg';
 
 export default function TopHeader({
   user,
@@ -9,30 +9,60 @@ export default function TopHeader({
   onOpenSettings
 }) {
   return (
-    <header className="w-full flex items-center justify-between py-3 px-4 bg-white/90 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100">
-      {/* Brand Logo */}
-      <EatWiseLogo size="md" />
+    <header className="w-full flex items-center justify-between py-4 px-6 bg-[#f8fff4] sticky top-0 z-30">
+      {/* ── Brand Logo ── */}
+      <div className="flex items-center gap-2">
+        <div
+          className="w-[38px] h-[36px] rounded-[10px] flex items-center justify-center flex-shrink-0"
+          style={{
+            background: 'linear-gradient(180deg, #28c92a 0%, #006d2c 51%, #0b6623 100%)'
+          }}
+        >
+          <img
+            src={landingIcon}
+            alt="EatWise Icon"
+            className="w-[28px] h-[27px] block"
+          />
+        </div>
+        <div
+          style={{
+            fontFamily: 'Poppins, sans-serif',
+            fontWeight: 700,
+            fontSize: 21,
+            lineHeight: 'normal',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span style={{ color: '#006d2c' }}>Eat</span>
+          <span style={{ color: '#28c92a' }}>Wise</span>
+        </div>
+      </div>
 
-      {/* Right Controls: Notification Bell + Avatar */}
+      {/* ── Right Controls: Notification Bell + Avatar ── */}
       <div className="flex items-center gap-2.5">
-        {/* Notification Bell */}
+        {/* Bell Button (50x50 white circle in Figma with shadow) */}
         <button
           onClick={onOpenNotifications}
-          className="relative w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all text-slate-700 border border-slate-200/80"
-          title="Notifikasi"
+          className="relative w-[42px] h-[42px] rounded-full bg-white flex items-center justify-center border border-[#cdebd3] shadow-xs active:scale-95 transition-all"
           aria-label="Lihat Notifikasi"
         >
-          <Bell className="w-5 h-5 text-slate-700" />
+          <img src={dashBell} alt="Notifikasi" className="w-[20px] h-[22px] block" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
+            <span
+              className="absolute top-1 right-1 w-[9px] h-[9px] rounded-full border border-white"
+              style={{ backgroundColor: '#ba1a1a' }}
+            />
           )}
         </button>
 
-        {/* User Avatar */}
+        {/* User Avatar (Circle with green background and white bold initial) */}
         <button
           onClick={onOpenSettings}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-800 text-white font-bold text-sm shadow-sm overflow-hidden border-2 border-emerald-600 hover:opacity-90 active:scale-95 transition-all"
-          title="Pengaturan Profil"
+          className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-white font-bold text-[20px] shadow-xs overflow-hidden active:scale-95 transition-all"
+          style={{
+            backgroundColor: '#00652c',
+            fontFamily: 'Poppins, sans-serif'
+          }}
           aria-label="Buka Pengaturan"
         >
           {user?.picture ? (

@@ -95,7 +95,7 @@ export default function App() {
   // 3. Main Authenticated Application View
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center selection:bg-emerald-100 selection:text-emerald-900 font-sans">
-      <div className="w-full max-w-[440px] bg-[#F8FAFC] min-h-screen shadow-2xl relative flex flex-col border-x border-slate-200/80">
+      <div className="w-full max-w-[402px] bg-[#f8fff4] min-h-screen shadow-2xl relative flex flex-col border-x border-[#cdebd3]/40">
         {/* Top Header (Shown on tabs except notifications subview) */}
         {currentTab !== 'notifications' && (
           <TopHeader

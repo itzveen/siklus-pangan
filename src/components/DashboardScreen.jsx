@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
-import { Camera, Plus, AlertTriangle, ArrowUpDown, ChevronRight, Sprout, Flame, Check, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import * as store from '../services/storageService.js';
+
+// Assets from Figma node 16:523
+import dashLeaf from '../assets/figma/dash_leaf.png';
+import dashLeafStat from '../assets/figma/dash_leaf_stat.png';
+import dashCloud from '../assets/figma/dash_cloud.png';
+import dashAlert from '../assets/figma/dash_alert.png';
+import foodBayam from '../assets/figma/food_bayam.png';
+import foodWortel from '../assets/figma/food_wortel.png';
+import foodTelur from '../assets/figma/food_telur.png';
+import foodTahu from '../assets/figma/food_tahu.png';
+import dashRecycle from '../assets/figma/dash_recycle.png';
+import dashCam from '../assets/figma/dash_cam.svg';
+import dashPlus from '../assets/figma/dash_plus.svg';
+import dashSort from '../assets/figma/dash_sort.svg';
+import dashArrowGreen from '../assets/figma/dash_arrow_green.svg';
+import dashDivider from '../assets/figma/dash_divider.svg';
 
 export default function DashboardScreen({
   user,
@@ -18,7 +33,7 @@ export default function DashboardScreen({
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortAscending, setSortAscending] = useState(true);
 
-  // Filter Categories
+  // Category filters
   const categoryFilters = [
     { id: 'all', label: `Semua (${foodItems.length})` },
     {
@@ -27,7 +42,7 @@ export default function DashboardScreen({
     },
     {
       id: 'meat',
-      label: `Lauk Hewani (${foodItems.filter(f => f.category === 'meat').length})`
+      label: `Lauk Hewani (${foodItems.filter(f => f.category === 'meat' || f.category === 'plant_protein').length})`
     },
     {
       id: 'leftover',
@@ -37,12 +52,13 @@ export default function DashboardScreen({
 
   const filteredFoods = foodItems.filter(item => {
     if (activeCategory === 'all') return true;
+    if (activeCategory === 'meat') return item.category === 'meat' || item.category === 'plant_protein';
     return item.category === activeCategory;
   });
 
-  const sortedFoods = [...filteredFoods].sort((a, b) => {
-    return sortAscending ? a.expiryDays - b.expiryDays : b.expiryDays - a.expiryDays;
-  });
+  const sortedFoods = [...filteredFoods].sort((a, b) =>
+    sortAscending ? a.expiryDays - b.expiryDays : b.expiryDays - a.expiryDays
+  );
 
   const warningCount = foodItems.filter(f => f.status === 'warning').length;
   const activeBatch = compostBatches.find(b => b.stage === 'filling') || compostBatches[0];
@@ -50,26 +66,17 @@ export default function DashboardScreen({
   const handleMarkCooked = (food) => {
     const updated = store.markFoodAsCooked(food.id);
     try {
-      confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.8 }
-      });
+      confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
     } catch (e) {}
     if (onFoodItemsUpdated) onFoodItemsUpdated(updated);
   };
 
   const handleMoveToCompost = (food) => {
-    const updatedBatches = store.addFoodToCompost(food, activeBatch?.id || null);
+    store.addFoodToCompost(food, activeBatch?.id || null);
     try {
-      confetti({
-        particleCount: 50,
-        spread: 50,
-        origin: { y: 0.8 }
-      });
+      confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 } });
     } catch (e) {}
-    const remaining = store.getFoodItems();
-    if (onFoodItemsUpdated) onFoodItemsUpdated(remaining);
+    if (onFoodItemsUpdated) onFoodItemsUpdated(store.getFoodItems());
   };
 
   const handlePopulateSampleData = () => {
@@ -77,88 +84,67 @@ export default function DashboardScreen({
     if (onFoodItemsUpdated) onFoodItemsUpdated(store.getFoodItems());
   };
 
-  /* -------------------------------------------------------------
-   * VARIANT A: KULKAS KOSONG (Empty Fridge Screen)
-   * ------------------------------------------------------------- */
+  // Helper to resolve realistic food photos from Figma
+  const getFoodImage = (food) => {
+    const name = (food.name || '').toLowerCase();
+    if (name.includes('bayam')) return foodBayam;
+    if (name.includes('wortel')) return foodWortel;
+    if (name.includes('telur')) return foodTelur;
+    if (name.includes('tahu')) return foodTahu;
+    return food.image || foodBayam;
+  };
+
+  /* ── 1. VARIANT: KULKAS KOSONG ── */
   if (foodItems.length === 0) {
     return (
-      <div className="pb-24 pt-4 px-4 space-y-6 max-w-[440px] mx-auto animate-in fade-in duration-300">
-        {/* Greeting */}
+      <div
+        className="pb-28 pt-4 px-5 max-w-[402px] mx-auto animate-in fade-in duration-300"
+        style={{ fontFamily: 'Poppins, sans-serif' }}
+      >
         <div className="space-y-1">
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-[24px] font-bold text-black tracking-tight">
             Halo, {user?.name || 'Budi'}!
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Kulkasmu masih kosong.
-          </p>
+          <p className="text-[12px] text-[#4b5563]">Kulkasmu masih kosong.</p>
         </div>
 
-        {/* Empty State Illustration Box */}
-        <div className="py-6 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="w-48 h-48 rounded-full bg-[#EBF7EE] flex items-center justify-center relative shadow-inner border border-emerald-100">
-            {/* Outline Refrigerator with Sprout Leaf SVG */}
-            <svg
-              viewBox="0 0 120 120"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-28 h-28 text-emerald-800"
-            >
-              {/* Fridge Frame */}
+        <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+          <div className="w-44 h-44 rounded-full bg-[#EBF7EE] flex items-center justify-center border border-[#cdebd3]">
+            <svg viewBox="0 0 120 120" fill="none" className="w-28 h-28 text-[#166534]">
               <rect x="35" y="20" width="50" height="80" rx="10" stroke="currentColor" strokeWidth="3" fill="#FFFFFF" />
-              {/* Divider */}
               <line x1="35" y1="50" x2="85" y2="50" stroke="currentColor" strokeWidth="2.5" />
-              {/* Handles */}
               <rect x="39" y="32" width="3" height="10" rx="1.5" fill="currentColor" />
               <rect x="39" y="58" width="3" height="16" rx="1.5" fill="currentColor" />
-              {/* Sprout Leaf on Top */}
-              <path
-                d="M78 20C78 20 84 15 90 18C91 24 85 27 78 20Z"
-                fill="#22C55E"
-                stroke="#166534"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M80 20C82 17 86 16 88 17"
-                stroke="#166534"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
+              <path d="M78 20C78 20 84 15 90 18C91 24 85 27 78 20Z" fill="#22C55E" stroke="#166534" strokeWidth="1.5" />
             </svg>
           </div>
-
-          <div className="space-y-2 max-w-[290px] mx-auto">
-            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+          <div className="space-y-1.5 max-w-[280px]">
+            <h2 className="text-[18px] font-bold text-black tracking-tight">
               Mulai catat bahan makananmu
             </h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-[12px] text-[#4b5563] leading-relaxed">
               Foto struk atau isi kulkas, AI akan memisahkan makanan dari non-makanan secara otomatis.
             </p>
           </div>
         </div>
 
-        {/* Stacked CTAs */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3">
           <button
             onClick={onOpenScan}
-            className="w-full py-3.5 px-5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-sm rounded-2xl shadow-md shadow-emerald-900/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-5 bg-[#0e7a37] hover:bg-[#0b6623] text-white font-bold text-[14px] rounded-[22px] shadow-sm active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
-            <Camera className="w-5 h-5" />
             <span>Scan Struk / Kulkas (AI)</span>
           </button>
-
           <button
             onClick={onOpenManual}
-            className="w-full py-3.5 px-5 bg-white hover:bg-slate-50 text-emerald-800 font-bold text-sm rounded-2xl border-2 border-emerald-800 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-5 bg-white text-[#0e7a37] font-bold text-[14px] rounded-[22px] border-2 border-[#0e7a37] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
-            <Plus className="w-5 h-5 stroke-[2.5]" />
             <span>Catat Manual</span>
           </button>
-
-          {/* Quick Demo Restore Pill */}
           <div className="flex justify-center pt-2">
             <button
               onClick={handlePopulateSampleData}
-              className="text-xs text-slate-400 hover:text-slate-600 underline font-medium"
+              className="text-[12px] text-[#4b5563] hover:text-black underline font-medium"
             >
               Isi Data Contoh Demo
             </button>
@@ -168,90 +154,100 @@ export default function DashboardScreen({
     );
   }
 
-  /* -------------------------------------------------------------
-   * VARIANT B: DASHBOARD SUDAH ADA ISI (Stocked Fridge Screen)
-   * ------------------------------------------------------------- */
+  /* ── 2. VARIANT: DASHBOARD SUDAH ADA ISI (Figma node 16:523) ── */
   return (
-    <div className="pb-28 pt-3 px-4 space-y-5 max-w-[440px] mx-auto animate-in fade-in duration-300">
-      {/* 1. Greeting & Context Chips */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+    <div
+      className="pb-28 pt-2 px-5 space-y-5 max-w-[402px] mx-auto animate-in fade-in duration-300"
+      style={{ fontFamily: 'Poppins, sans-serif' }}
+    >
+      {/* ── Greeting & Subtitle ── */}
+      <div>
+        <h1 className="text-[24px] font-bold text-black leading-tight">
           Halo, {user?.name || 'Budi'}!
         </h1>
-        <p className="text-xs text-slate-500 font-medium">
+        <p className="text-[12px] text-[#4b5563] mt-1">
           Pantry cerdas mendeteksi {foodItems.length} bahan aktif.
         </p>
+      </div>
 
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E8F8EE] text-emerald-800 border border-emerald-200/80">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-            <span>Zero Waste</span>
+      {/* ── Badges: Zero Waste & Household ── */}
+      <div className="flex items-center gap-2.5">
+        {/* Zero Waste Pill */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-[17px] bg-[rgba(40,201,42,0.32)] h-[22px]">
+          <img src={dashLeaf} alt="" className="w-[19px] h-[17px] object-contain" />
+          <span className="text-[12px] font-bold text-[#00652c] leading-none">
+            Zero Waste
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 shadow-xs">
-            <span>🏡</span>
-            <span>{user?.householdType === 'apartment' ? 'Apartemen (Takakura/Bokashi)' : 'Rumah (Kompos Ember)'}</span>
+        </div>
+
+        {/* Household Pill */}
+        <div className="flex items-center px-3 py-1 rounded-[17px] bg-white border border-[#cdebd3] h-[22px]">
+          <span className="text-[12px] font-bold text-[#00652c] leading-none">
+            {user?.householdType === 'apartment' ? 'Apartemen (Takakura/Bokashi)' : 'Rumah (Kompos Ember)'}
           </span>
         </div>
       </div>
 
-      {/* 2. Eco-Impact Metric Cards (2 Columns) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Card 1: Bahan Terselamatkan */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0">
-            <Sprout className="w-5 h-5 text-emerald-600" />
+      {/* ── 2-Col Metric Card: Bahan Terselamatkan & Emisi Dicegah ── */}
+      <div className="bg-white rounded-[25px] border border-[#cdebd3] h-[90px] px-4 flex items-center justify-between relative shadow-xs">
+        {/* Left Col: Bahan Terselamatkan */}
+        <div className="flex items-center gap-2.5 flex-1">
+          <div className="w-[34px] h-[35px] rounded-[12px] bg-[rgba(40,201,42,0.32)] flex items-center justify-center flex-shrink-0">
+            <img src={dashLeafStat} alt="" className="w-[31px] h-[26px] object-contain" />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 block leading-tight">
-              Bahan Terselamatkan
-            </span>
-            <span className="text-base font-extrabold text-slate-900 tracking-tight">
+            <p className="text-[11px] text-[#4b5563] leading-tight">Bahan Terselamatkan</p>
+            <p className="text-[17px] font-bold text-black mt-0.5 leading-none">
               {impact?.rescuedFoodKg ?? 3.8} Kg
-            </span>
+            </p>
           </div>
         </div>
 
-        {/* Card 2: Emisi Dicegah */}
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 flex-shrink-0">
-            <Flame className="w-5 h-5 text-amber-600" />
+        {/* Vertical divider */}
+        <div className="w-[1px] h-[59px] flex items-center justify-center flex-shrink-0 mx-2">
+          <img src={dashDivider} alt="" className="h-[59px] w-[2px] block" />
+        </div>
+
+        {/* Right Col: Emisi Dicegah */}
+        <div className="flex items-center gap-2.5 flex-1 pl-1">
+          <div className="w-[34px] h-[35px] rounded-[12px] bg-[rgba(247,225,126,0.56)] flex items-center justify-center flex-shrink-0">
+            <img src={dashCloud} alt="" className="w-[25px] h-[27px] object-contain" />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-500 block leading-tight">
-              Emisi Dicegah
-            </span>
-            <span className="text-base font-extrabold text-slate-900 tracking-tight">
-              {impact?.co2ePreventedKg ?? 9.5} Kg <span className="text-[10px] font-medium text-slate-400">CO₂e</span>
-            </span>
+            <p className="text-[11px] text-[#4b5563] leading-tight">Emisi Dicegah</p>
+            <p className="text-[17px] font-bold text-black mt-0.5 leading-none whitespace-nowrap">
+              {impact?.co2ePreventedKg ?? 9.5} Kg CO₂e
+            </p>
           </div>
         </div>
       </div>
 
-      {/* 3. Urgent Warning Banner ("PERHATIAN SEGERA") */}
+      {/* ── Emergency Alert Card ("PERHATIAN SEGERA") ── */}
       {warningCount > 0 && (
-        <div className="bg-[#FEF3C7] rounded-2xl p-4 border border-[#FDE68A] shadow-xs space-y-2.5">
+        <div className="bg-[#fef3c7] border border-[#f59e0b] rounded-[24px] p-4 space-y-2.5 relative shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-800" />
-            <h4 className="text-xs font-extrabold text-amber-900 tracking-wide uppercase">
+            <img src={dashAlert} alt="Warning" className="w-[24px] h-[20px] object-contain" />
+            <h4 className="text-[12px] font-extrabold text-[#92400e] tracking-[0.55px] uppercase">
               PERHATIAN SEGERA
             </h4>
           </div>
-          <p className="text-xs text-amber-950 font-medium leading-relaxed">
+          <p className="text-[14px] text-[#78350f] leading-snug">
             {warningCount} bahan makanan harus segera dihabiskan dalam 24 jam!
           </p>
-          <button
-            onClick={onOpenRescueAi}
-            className="w-full py-2.5 px-4 bg-[#B45309] hover:bg-[#92400E] text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-1.5"
-          >
-            <span>Rescue Masakan</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          <div>
+            <button
+              onClick={onOpenRescueAi}
+              className="px-4 py-1.5 rounded-full bg-[#b45309] hover:bg-[#92400e] text-white text-[13px] font-bold shadow-xs active:scale-95 transition-all"
+            >
+              Rescue Masakan
+            </button>
+          </div>
         </div>
       )}
 
-      {/* 4. Quick Actions: ADD MY STOCK */}
+      {/* ── ADD MY STOCK ── */}
       <div className="space-y-2.5">
-        <h3 className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
+        <h3 className="text-[12px] font-bold text-[#4b5563] tracking-[0.6px] uppercase">
           ADD MY STOCK
         </h3>
 
@@ -259,157 +255,188 @@ export default function DashboardScreen({
           {/* Scan AI Card */}
           <button
             onClick={onOpenScan}
-            className="bg-[#166534] hover:bg-[#14532D] text-white p-4 rounded-2xl shadow-sm transition-all active:scale-[0.99] text-left flex flex-col justify-between min-h-[96px] group"
+            className="rounded-[24px] p-4 text-left flex flex-col justify-between h-[116px] text-white shadow-sm active:scale-[0.99] transition-all"
+            style={{
+              background: 'linear-gradient(145deg, #16a34a 0%, #0b6623 100%)'
+            }}
           >
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white mb-2">
-              <Camera className="w-4 h-4" />
+            <div className="w-[40px] h-[40px] rounded-[16px] bg-white/20 backdrop-blur-[4px] flex items-center justify-center">
+              <img src={dashCam} alt="Scan" className="w-[20px] h-[20px]" />
             </div>
             <div>
-              <h4 className="font-bold text-sm tracking-tight text-white">Scan AI</h4>
-              <p className="text-[11px] text-emerald-200 mt-0.5">Struk belanja/isi kulkas</p>
+              <h4 className="text-[17px] font-extrabold text-white leading-tight">Scan AI</h4>
+              <p className="text-[12px] font-medium text-white/85 leading-tight mt-0.5">
+                Struk belanja/isi kulkas
+              </p>
             </div>
           </button>
 
           {/* Manual Input Card */}
           <button
             onClick={onOpenManual}
-            className="bg-white hover:bg-slate-50 border border-slate-200 p-4 rounded-2xl shadow-xs transition-all active:scale-[0.99] text-left flex flex-col justify-between min-h-[96px]"
+            className="bg-white border border-[#cdebd3] rounded-[24px] p-4 text-left flex flex-col justify-between h-[116px] shadow-sm active:scale-[0.99] transition-all"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-800 flex items-center justify-center mb-2 border border-emerald-100">
-              <Plus className="w-4 h-4 stroke-[2.5]" />
+            <div className="w-[40px] h-[40px] rounded-[16px] bg-[#dcfce7] flex items-center justify-center">
+              <img src={dashPlus} alt="Manual" className="w-[20px] h-[20px]" />
             </div>
             <div>
-              <h4 className="font-bold text-sm tracking-tight text-slate-900">Manual</h4>
-              <p className="text-[11px] text-slate-400 mt-0.5">Catat stok sendiri</p>
+              <h4 className="text-[17px] font-extrabold text-[#1f2937] leading-tight">Manual</h4>
+              <p className="text-[12px] font-medium text-[#4b5563] leading-tight mt-0.5">
+                Catat stok sendiri
+              </p>
             </div>
           </button>
         </div>
       </div>
 
-      {/* 5. Inventory: DAFTAR BAHAN MAKANAN */}
+      {/* ── DAFTAR BAHAN MAKANAN ── */}
       <div className="space-y-3 pt-1">
+        {/* Section title & sort button */}
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
+          <h3 className="text-[12px] font-bold text-[#4b5563] tracking-[0.6px] uppercase">
             DAFTAR BAHAN MAKANAN
           </h3>
           <button
             onClick={() => setSortAscending(!sortAscending)}
-            className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 transition-colors"
+            className="flex items-center gap-1.5 text-[12px] font-bold text-[#0b6623] hover:opacity-80 transition-opacity"
           >
-            <ArrowUpDown className="w-3.5 h-3.5" />
+            <img src={dashSort} alt="" className="w-4 h-4 block" />
             <span>Urutkan</span>
           </button>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {categoryFilters.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                activeCategory === cat.id
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {categoryFilters.map(cat => {
+            const isActive = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1 rounded-full text-[9px] font-bold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-[#0b6623] text-white shadow-xs'
+                    : 'bg-white border border-[#cdebd3] text-[#4b5563]'
+                }`}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Food Items List */}
+        {/* Food Item Cards */}
         <div className="space-y-3">
-          {sortedFoods.map((food) => {
+          {sortedFoods.map(food => {
             const isWarning = food.status === 'warning';
             const isSpoiled = food.status === 'spoiled';
             const isSafe = food.status === 'safe';
 
+            // Card border & urgency styling matching Figma
+            const cardBorder = isSpoiled
+              ? 'border-[rgba(239,68,68,0.3)]'
+              : isWarning
+              ? 'border-[#fef3c7]'
+              : 'border-[#cdebd3]';
+
+            const barWidth = isSpoiled ? '100%' : isWarning ? '75%' : '25%';
+            const barBg = isSpoiled ? '#ef4444' : isWarning ? '#f59e0b' : '#0b6623';
+
             return (
               <div
                 key={food.id}
-                className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs space-y-3 hover:border-slate-300 transition-all"
+                className={`bg-white border ${cardBorder} border-solid rounded-[30px] p-3.5 flex items-center gap-3.5 shadow-xs`}
+                style={{ minHeight: 127 }}
               >
-                <div className="flex items-start gap-3.5">
-                  {/* Thumbnail / Emoji Icon Box */}
-                  <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">
-                    {food.icon || (food.category === 'meat' ? '🍗' : food.category === 'leftover' ? '🍲' : '🥬')}
-                  </div>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-start justify-between gap-1">
-                      <h4 className="font-bold text-sm text-slate-900">{food.name}</h4>
-                      {/* Status Badges */}
-                      {isSpoiled ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
-                          Basi / Lewat Waktu
-                        </span>
-                      ) : isWarning ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
-                          Tinggal {food.expiryDays || 1} Hari!
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {food.expiryDays} Hari Lagi
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-slate-500">
-                      {food.categoryLabel || 'Bahan segar'} · {food.quantityText || '1 porsi (250g)'}
-                    </p>
-
-                    {/* Urgency Progress Bar */}
-                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mt-1.5">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isSpoiled
-                            ? 'w-full bg-rose-500'
-                            : isWarning
-                            ? 'w-1/4 bg-amber-500'
-                            : 'w-3/4 bg-emerald-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
+                {/* Food Image */}
+                <div className="w-[76px] h-[76px] rounded-[18px] border border-[#cdebd3] overflow-hidden flex-shrink-0 bg-slate-50">
+                  <img
+                    src={getFoodImage(food)}
+                    alt={food.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
-                {/* Card Action Buttons */}
-                <div className="pt-1 flex items-center gap-2">
-                  {isSpoiled ? (
-                    <button
-                      onClick={() => handleMoveToCompost(food)}
-                      className="w-full py-2 px-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-1.5"
-                    >
-                      <Sprout className="w-3.5 h-3.5" />
-                      <span>Alihkan Ke Kompos</span>
-                    </button>
-                  ) : (
-                    <>
-                      {isWarning ? (
+                {/* Info & Actions */}
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className="text-[16px] font-bold text-[#1f2937] leading-tight">
+                      {food.name}
+                    </h4>
+
+                    {/* Status Badge */}
+                    {isSpoiled ? (
+                      <span className="bg-[#fee2e2] border border-[#fca5a5] text-[#991b1b] text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                        Basi / Lewat Waktu
+                      </span>
+                    ) : isWarning ? (
+                      <span className="bg-[#fef3c7] border border-[#fde68a] text-[#92400e] text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                        Tinggal {food.expiryDays || 1} Hari!
+                      </span>
+                    ) : (
+                      <span className="bg-[#cdebd3] border border-[#78c28b] text-[#0b6623] text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {food.expiryDays || 6} Hari Lagi
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-[#4b5563]">
+                    {food.categoryLabel || 'Sayur segar'} · {food.quantityText || '1 ikat (250g)'}
+                  </p>
+
+                  {/* Shelf-Life Progress Bar */}
+                  <div className="w-full bg-[#e6fbe9] h-[6px] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: barWidth, backgroundColor: barBg }}
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-1">
+                    {isSpoiled ? (
+                      <button
+                        onClick={() => handleMoveToCompost(food)}
+                        className="w-full py-1 px-3 rounded-[14px] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                        style={{
+                          background: 'linear-gradient(90deg, #0b6623 0%, #16cc46 100%)'
+                        }}
+                      >
+                        <img src={dashRecycle} alt="" className="w-4 h-4 object-contain" />
+                        <span>Alihkan Ke Kompos</span>
+                      </button>
+                    ) : isWarning ? (
+                      <>
                         <button
                           onClick={onOpenRescueAi}
-                          className="flex-1 py-2 px-3 bg-[#B45309] hover:bg-[#92400E] text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.99] text-center"
+                          className="bg-[#b45309] hover:bg-[#92400e] text-white text-[10px] font-bold px-3 py-1 rounded-[14px] active:scale-95 transition-all text-center flex-1"
                         >
                           Rescue Resep
                         </button>
-                      ) : (
                         <button
                           onClick={() => handleMarkCooked(food)}
-                          className="flex-1 py-2 px-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-[0.99] text-center"
+                          className="bg-white border border-[#cdebd3] text-[#4b5563] text-[10px] font-semibold px-3 py-1 rounded-[14px] active:scale-95 transition-all"
+                        >
+                          Habis
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleMarkCooked(food)}
+                          className="bg-[#0b6623] hover:bg-[#094c1a] text-white text-[10px] font-bold px-3 py-1 rounded-[14px] active:scale-95 transition-all text-center flex-1"
                         >
                           Dimasak
                         </button>
-                      )}
-
-                      <button
-                        onClick={() => handleMarkCooked(food)}
-                        className="py-2 px-4 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs rounded-xl border border-slate-200 transition-all active:scale-[0.99]"
-                      >
-                        Habis
-                      </button>
-                    </>
-                  )}
+                        <button
+                          onClick={() => handleMarkCooked(food)}
+                          className="bg-white border border-[#cdebd3] text-[#4b5563] text-[10px] font-semibold px-3 py-1 rounded-[14px] active:scale-95 transition-all"
+                        >
+                          Habis
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -417,32 +444,46 @@ export default function DashboardScreen({
         </div>
       </div>
 
-      {/* 6. Compost Status Card Footer */}
+      {/* ── Batch Kompos #01 Preview Widget ── */}
       {activeBatch && (
         <div
           onClick={onSwitchToCompost}
-          className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all active:scale-[0.99] group"
+          className="bg-[#dcfce7] border border-[#cdebd3] rounded-[24px] p-4 space-y-2 cursor-pointer active:scale-[0.99] transition-all hover:border-[#16a34a]"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100 flex-shrink-0">
-              <Sprout className="w-5 h-5 text-emerald-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold text-sm text-slate-900">{activeBatch.title}</h4>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Fase {activeBatch.stage === 'filling' ? 'Pengisian' : 'Pematangan'}
-                </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-[40px] h-[40px] rounded-[16px] bg-white flex items-center justify-center flex-shrink-0">
+                <img src={dashLeafStat} alt="" className="w-[26px] h-[26px] object-contain" />
               </div>
-              <p className="text-xs text-slate-400 mt-0.5 group-hover:text-emerald-700 transition-colors">
-                Detail Kompos &gt;
-              </p>
+              <div>
+                <h4 className="text-[15px] font-bold text-[#1f2937] leading-tight">
+                  {activeBatch.title || 'Batch Kompos #01'}
+                </h4>
+                <p className="text-[11px] text-[#4b5563] leading-tight mt-0.5">
+                  Fase {activeBatch.stage === 'filling' ? 'Pengisian (Ember A)' : 'Pematangan 14 Hari'}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <span className="text-lg font-extrabold text-emerald-700">
+            <span className="text-[24px] font-extrabold text-[#0b6623] tracking-[-0.6px]">
               {activeBatch.fillPercentage || 60}%
             </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-white h-[8px] rounded-full overflow-hidden p-[2px]">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${activeBatch.fillPercentage || 60}%`,
+                background: 'linear-gradient(90deg, #16a34a 0%, #0b6623 100%)'
+              }}
+            />
+          </div>
+
+          {/* Detail Link */}
+          <div className="flex items-center gap-1 text-[11px] font-bold text-[#0b6623] pt-0.5">
+            <span>Detail Kompos</span>
+            <img src={dashArrowGreen} alt="→" className="w-4 h-4 block" />
           </div>
         </div>
       )}

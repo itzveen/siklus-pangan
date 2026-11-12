@@ -1,65 +1,37 @@
 import React from 'react';
 
+// Figma exact logo: green rounded icon + "EatWise" text in green
 export default function EatWiseLogo({ size = 'md', className = '', showText = true }) {
-  const iconSizes = {
-    sm: 'w-7 h-7',
-    md: 'w-9 h-9',
-    lg: 'w-12 h-12',
-    xl: 'w-20 h-20'
+  const configs = {
+    xs:  { icon: 'w-6 h-6',  text: 'text-sm',   gap: 'gap-1.5' },
+    sm:  { icon: 'w-7 h-7',  text: 'text-base',  gap: 'gap-1.5' },
+    md:  { icon: 'w-8 h-8',  text: 'text-lg',    gap: 'gap-2'   },
+    lg:  { icon: 'w-10 h-10', text: 'text-xl',   gap: 'gap-2'   },
+    xl:  { icon: 'w-16 h-16', text: 'text-3xl',  gap: 'gap-3'   },
   };
-
-  const textSizes = {
-    sm: 'text-base',
-    md: 'text-xl',
-    lg: 'text-2xl',
-    xl: 'text-3xl'
-  };
+  const cfg = configs[size] || configs.md;
 
   return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* Radiant Glow App Icon */}
-      <div className={`relative flex items-center justify-center ${iconSizes[size] || iconSizes.md}`}>
-        {/* Glow rays (for splash or hero) */}
-        {size === 'xl' && (
-          <>
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-1 h-2.5 bg-emerald-400 rounded-full opacity-80" />
-            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-2.5 bg-emerald-400 rounded-full opacity-80" />
-            <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-1 w-2.5 bg-emerald-400 rounded-full opacity-80" />
-            <span className="absolute -right-3 top-1/2 -translate-y-1/2 h-1 w-2.5 bg-emerald-400 rounded-full opacity-80" />
-            <span className="absolute -top-2 -left-2 w-1 h-2 bg-emerald-400 rounded-full -rotate-45 opacity-80" />
-            <span className="absolute -top-2 -right-2 w-1 h-2 bg-emerald-400 rounded-full rotate-45 opacity-80" />
-          </>
-        )}
-
-        <div className="w-full h-full rounded-[28%] bg-gradient-to-br from-emerald-400 via-emerald-600 to-green-700 p-0.5 shadow-md shadow-emerald-700/20 flex items-center justify-center">
-          <svg
-            viewBox="0 0 40 40"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-3/4 h-3/4 text-white"
-          >
-            {/* Curved cycle arrows creating closed-loop leaf */}
-            <path
-              d="M20 7C12.82 7 7 12.82 7 20C7 22.25 7.57 24.36 8.58 26.2L10.74 24.04C10.27 22.8 10 21.43 10 20C10 14.48 14.48 10 20 10H22.59L19.29 6.71L20.71 5.29L26.41 11L20.71 16.71L19.29 15.29L22.59 12H20C15.58 12 12 15.58 12 20C12 21.14 12.24 22.23 12.67 23.21L14.94 20.94C14.35 19.89 14 18.68 14 17.4C14 13.86 16.86 11 20.4 11C23.94 11 26.8 13.86 26.8 17.4C26.8 21.3 23.3 24.5 19.4 24.5C18.12 24.5 16.91 24.15 15.86 23.56L14.39 25.03C15.84 25.96 17.55 26.5 19.4 26.5C24.4 26.5 28.8 22.4 28.8 17.4C28.8 12.75 25.05 9 20.4 9H20V7Z"
-              fill="currentColor"
-            />
-            {/* Sprout Leaf Accent */}
-            <path
-              d="M20.5 13.5C23.5 13.5 26 16 26 19C26 22 23.5 24.5 20.5 24.5C20.5 21 21.5 17 24 15.5C22.5 15 21 14.5 20.5 13.5Z"
-              fill="rgba(255,255,255,0.85)"
-            />
-          </svg>
-        </div>
+    <div className={`flex items-center ${cfg.gap} select-none ${className}`}>
+      {/* Green rounded square icon with leaf/recycle symbol */}
+      <div className={`${cfg.icon} rounded-[10px] bg-[#16A34A] flex items-center justify-center flex-shrink-0`}>
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[65%] h-[65%]">
+          {/* Circular arrow cycle */}
+          <path
+            d="M16 6C10.477 6 6 10.477 6 16C6 18.09 6.63 20.03 7.72 21.64L10 19.36C9.37 18.11 9 16.69 9 15.17C9 11.57 11.57 9 15.17 9H17L14.5 6.5L16 5L21 10L16 15L14.5 13.5L17 11H15.17C13.19 11 11.5 12.69 11.5 14.67C11.5 16.08 12.3 17.3 13.46 17.96L11.26 20.17C9.56 18.9 8.5 16.9 8.5 14.67C8.5 11.09 11.39 8.2 14.97 8.2H16V6Z"
+            fill="white"
+          />
+          <path
+            d="M24.28 10.36L22 12.64C22.63 13.89 23 15.31 23 16.83C23 20.43 20.43 23 16.83 23H15L17.5 25.5L16 27L11 22L16 17L17.5 18.5L15 21H16.83C18.81 21 20.5 19.31 20.5 17.33C20.5 15.92 19.7 14.7 18.54 14.04L20.74 11.83C22.44 13.1 23.5 15.1 23.5 17.33C23.5 20.91 20.61 23.8 17.03 23.8H16V26C21.523 26 26 21.523 26 16C26 13.91 25.37 11.97 24.28 10.36Z"
+            fill="rgba(255,255,255,0.75)"
+          />
+        </svg>
       </div>
 
-      {/* Brand Text: EatWise */}
+      {/* Brand text "EatWise" – Figma shows full green bold text */}
       {showText && (
-        <span className={`font-bold tracking-tight ${textSizes[size] || textSizes.md}`}>
-          <span className="text-slate-900">Eat</span>
-          <span className="text-emerald-600 relative">
-            Wise
-            <span className="inline-block w-1.5 h-1.5 bg-emerald-500 rounded-full ml-0.5 -mt-2 align-top animate-pulse" />
-          </span>
+        <span className={`font-bold tracking-tight leading-none text-[#16A34A] ${cfg.text}`}>
+          EatWise
         </span>
       )}
     </div>
