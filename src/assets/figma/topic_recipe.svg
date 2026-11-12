@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Recipe topic" clip-path="url(#clip0_0_18)">
+<path id="Vector" d="M1.666 9.99933C1.666 14.5986 5.40004 18.3327 9.99933 18.3327C14.5986 18.3327 18.3327 14.5986 18.3327 9.99933C18.3327 5.40004 14.5986 1.666 9.99933 1.666C5.40004 1.666 1.666 5.40004 1.666 9.99933V9.99933" stroke-width="1.67" stroke-linecap="round" stroke="#1B5E3A"/>
+<path id="Vector_2" d="M10 5V10L13.3333 11.6667" stroke-width="1.67" stroke-linecap="round" stroke="#1B5E3A"/>
+</g>
+<defs>
+<clipPath id="clip0_0_18">
+<rect width="20" height="20" fill="white"/>
+</clipPath>
+</defs>
+</svg>

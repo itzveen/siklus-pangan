@@ -164,16 +164,6 @@ export default function DashboardScreen({
               Catat Manual
             </button>
           </div>
-
-          {/* Quick Demo restore pill */}
-          <div className="pt-1">
-            <button
-              onClick={handlePopulateSampleData}
-              className="text-[12px] text-[#55675e] hover:text-[#11231b] underline font-medium"
-            >
-              Isi Data Contoh Demo (7 Bahan)
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -512,19 +502,6 @@ export default function DashboardScreen({
           </div>
         </div>
       )}
-
-      {/* ── Testing Utility: Toggle Kulkas Kosong ── */}
-      <div className="flex justify-center pt-1 pb-2">
-        <button
-          onClick={() => {
-            store.saveFoodItems([]);
-            if (onFoodItemsUpdated) onFoodItemsUpdated([]);
-          }}
-          className="text-[12px] text-[#55675e] hover:text-[#11231b] underline font-medium"
-        >
-          Simulasi Kulkas Kosong (0 Bahan)
-        </button>
-      </div>
     </div>
   );
 }
