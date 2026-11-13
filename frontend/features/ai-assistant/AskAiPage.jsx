@@ -30,9 +30,10 @@ export default function TanyaAiScreen({
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isLoading]);
 
-  // Critical items: expiring in <= 3 days
-  const criticalItems = foodItems.filter(f => f.expiryDays <= 3 && f.status !== 'spoiled');
-  const spoiledItems = foodItems.filter(f => f.status === 'spoiled');
+  // Critical items: expiring in <= 3 days and NOT spoiled
+  const criticalItems = foodItems.filter(f => f.expiryDays <= 3 && f.status !== 'spoiled' && Number(f.expiryDays ?? 1) > 0);
+  const nonSpoiledItems = foodItems.filter(f => f.status !== 'spoiled' && Number(f.expiryDays ?? 1) > 0);
+  const spoiledItems = foodItems.filter(f => f.status === 'spoiled' || Number(f.expiryDays ?? 1) <= 0);
   const fillingBatches = store.getCompostBatches().filter(b => b.stage === 'filling');
 
   const handlePickCompostOption = (msg, methodName, description) => {
@@ -100,10 +101,28 @@ export default function TanyaAiScreen({
       return;
     }
 
-    // 2. If fridge has items:
+    // 1b. If all items in fridge are already spoiled:
+    if (nonSpoiledItems.length === 0) {
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'Tolong beri resep kilat dari bahan yang ada di kulkasku.'
+      };
+      const aiMsg = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        type: 'empty_fridge',
+        title: 'Tidak Ada Bahan Layak Masak',
+        text: `Semua bahan yang tersisa di kulkasmu saat ini sudah berstatus basi / lewat waktu simpan, ${user?.name || 'Budi'}. Demi keamanan pangan, bahan basi tidak disarankan untuk dimasak.\n\nYuk pilih topik "Olah bahan basi jadi kompos" untuk mengubahnya menjadi pupuk organik!`
+      };
+      setChatMessages([userMsg, aiMsg]);
+      return;
+    }
+
+    // 2. If fridge has non-spoiled items:
     const targetItems = criticalItems.length > 0
       ? criticalItems
-      : foodItems.slice(0, 3);
+      : nonSpoiledItems.slice(0, 3);
 
     const itemNames = targetItems.map(i => i.name).join(', ');
 
