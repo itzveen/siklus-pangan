@@ -12,10 +12,13 @@ import TanyaAiScreen from './components/TanyaAiScreen.jsx';
 import RiwayatChatScreen from './components/RiwayatChatScreen.jsx';
 import PengaturanScreen from './components/PengaturanScreen.jsx';
 import LogoutDialog from './components/LogoutDialog.jsx';
+import CompostPage from './pages/CompostPage.jsx';
 
-// Modals from Teammate (Scan & Manual Input)
+// Modals (Scan, Manual Input, Rescue Recipe, Compost Guide)
 import ScanModal from './components/ScanModal.jsx';
 import ManualInputModal from './components/ManualInputModal.jsx';
+import RecipeModal from './components/RecipeModal.jsx';
+import CompostModal from './components/CompostModal.jsx';
 
 export default function App() {
   // App Navigation & Session States
@@ -28,6 +31,10 @@ export default function App() {
   const [showScanModal, setShowScanModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualInitialTab, setManualInitialTab] = useState('raw'); // 'raw' | 'leftover'
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeTargetItems, setRecipeTargetItems] = useState(null);
+  const [showCompostModal, setShowCompostModal] = useState(false);
+  const [compostTargetFood, setCompostTargetFood] = useState(null);
 
   // Live Reactive Data from Storage
   const [foodItems, setFoodItems] = useState(store.getFoodItems());
@@ -54,8 +61,6 @@ export default function App() {
 
   const handleLoginSuccess = (updatedUser) => {
     setUser(updatedUser);
-    // User requested: When logging in fresh, start with empty fridge so user scans or inputs manually
-    store.saveFoodItems([]);
     refreshAllData();
     setCurrentTab('pantry');
   };
@@ -66,25 +71,38 @@ export default function App() {
     setShowLogoutDialog(false);
   };
 
+  const handleOpenRescueModal = (items) => {
+    const resolved = Array.isArray(items) && items.length > 0
+      ? items
+      : foodItems.filter((f) => f.status === 'warning');
+    setRecipeTargetItems(resolved.length > 0 ? resolved : null);
+    setShowRecipeModal(true);
+  };
+
+  const handleOpenCompostModal = (food) => {
+    setCompostTargetFood(food || null);
+    setShowCompostModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center selection:bg-emerald-100 selection:text-emerald-900 font-sans">
       {/* Mobile Application Frame: 402px wide, matching Figma screen size */}
       <div className="w-full max-w-[402px] bg-[#f8fff4] min-h-screen shadow-2xl relative flex flex-col border-x border-[#cdebd3]/40 overflow-hidden">
         {showSplash ? (
-          /* 1. Splash Screen */
+          /* 1. Splash Screen (Figma 1:2) */
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : !user?.isLoggedIn ? (
-          /* 2. Landing Screen with Google OAuth */
+          /* 2. Landing Screen with Google OAuth (Figma 8:10) */
           <LandingScreen onLoginSuccess={handleLoginSuccess} />
         ) : currentTab === 'notifications' ? (
-          /* 4. Notification Screen */
+          /* 4. Notification Screen (Figma 43:195) */
           <NotificationScreen
             notifications={notifications}
             onBack={() => setCurrentTab('pantry')}
             onNotificationsUpdated={() => refreshAllData()}
           />
         ) : (
-          /* 3. Main Authenticated Views with Top Header & Bottom Nav */
+          /* 3. Main Authenticated Views */
           <>
             {/* TopHeader only rendered on Pantry / Dashboard screen to prevent duplicate headers */}
             {currentTab === 'pantry' && (
@@ -97,7 +115,7 @@ export default function App() {
             )}
 
             <main className="flex-1 overflow-y-auto">
-              {/* Tab 1: Pantry / Dashboard */}
+              {/* Tab 1: Pantry / Dashboard (Figma 16:523 & 44:476) */}
               {currentTab === 'pantry' && (
                 <DashboardScreen
                   user={user}
@@ -109,14 +127,14 @@ export default function App() {
                     setManualInitialTab('raw');
                     setShowManualModal(true);
                   }}
-                  onOpenRescueAi={() => setCurrentTab('ai')}
-                  onOpenCompostAi={() => setCurrentTab('ai')}
+                  onOpenRescueAi={handleOpenRescueModal}
+                  onOpenCompostAi={handleOpenCompostModal}
                   onFoodItemsUpdated={() => refreshAllData()}
                   onSwitchToCompost={() => setCurrentTab('compost')}
                 />
               )}
 
-              {/* Tab 2: Tanya AI */}
+              {/* Tab 2: Tanya AI (Figma 32:3707) */}
               {currentTab === 'ai' && (
                 <TanyaAiScreen
                   user={user}
@@ -127,10 +145,11 @@ export default function App() {
                     setManualInitialTab('raw');
                     setShowManualModal(true);
                   }}
+                  onHistoryUpdated={() => refreshAllData()}
                 />
               )}
 
-              {/* Tab 2b: Riwayat Chat */}
+              {/* Tab 2b: Riwayat Chat (Figma 54:905) */}
               {currentTab === 'ai-riwayat' && (
                 <RiwayatChatScreen
                   chats={aiChats}
@@ -139,7 +158,16 @@ export default function App() {
                 />
               )}
 
-              {/* Tab 3: Pengaturan */}
+              {/* Tab 3: Siklus Kompos & Panen (Figma 32:3581, 45:1108, 62:75, 55:63) */}
+              {currentTab === 'compost' && (
+                <CompostPage
+                  onNavigateTab={(tab) => setCurrentTab(tab)}
+                  onOpenScan={() => setShowScanModal(true)}
+                  onDataUpdated={() => refreshAllData()}
+                />
+              )}
+
+              {/* Tab 4: Pengaturan (Figma 30:2902) */}
               {currentTab === 'settings' && (
                 <PengaturanScreen
                   user={user}
@@ -147,80 +175,91 @@ export default function App() {
                   onOpenLogoutDialog={() => setShowLogoutDialog(true)}
                 />
               )}
-
-              {/* Tab 4: Kompos */}
-              {currentTab === 'compost' && (
-                <div className="p-6 text-center space-y-4 pt-16">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-3xl">
-                    🌿
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-800">
-                    Siklus Kompos Aktif
-                  </h2>
-                  <p className="text-sm text-gray-600 max-w-xs mx-auto">
-                    Bagian kompos dikerjakan oleh rekan tim. Kamu bisa meninjau kartu kompos dari Dashboard Pantry atau bertanya di menu Tanya AI!
-                  </p>
-                  <button
-                    onClick={() => setCurrentTab('pantry')}
-                    className="px-6 py-2.5 bg-[#0e7a37] text-white rounded-full font-bold text-sm shadow-sm"
-                  >
-                    Kembali ke Pantry
-                  </button>
-                </div>
-              )}
             </main>
 
-            <BottomNavBar
-              activeTab={
-                currentTab === 'ai-riwayat' ? 'ai' : currentTab
-              }
-              onSelectTab={(tab) => {
-                if (tab === 'ai') {
-                  setCurrentTab('ai');
-                } else {
-                  setCurrentTab(tab);
-                }
-              }}
-              onOpenScan={() => setShowScanModal(true)}
-            />
+            {/* BottomNavBar: CompostPage already renders its own Figma-exact BottomNavBar */}
+            {currentTab !== 'compost' && (
+              <BottomNavBar
+                activeTab={currentTab === 'ai-riwayat' ? 'ai' : currentTab}
+                onSelectTab={(tab) => setCurrentTab(tab)}
+                onOpenScan={() => setShowScanModal(true)}
+              />
+            )}
           </>
         )}
 
-        {/* Dialog Logout (Figma node 45:921 - 45:942) */}
+        {/* Dialog Logout (Figma 45:942) */}
         <LogoutDialog
           isOpen={showLogoutDialog}
           onCancel={() => setShowLogoutDialog(false)}
           onConfirm={handleConfirmLogout}
         />
 
-        {/* Teammate Modals: Fullscreen Modal Overlays */}
+        {/* Modal: AI Scan Struk / Isi Kulkas (Figma 22:2306, 23:2426, 22:1954, 45:615, 66:16) */}
         {showScanModal && (
           <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
             <ScanModal
-              isOpen={showScanModal}
+              initialStep="capture"
               onClose={() => setShowScanModal(false)}
-              onOpenManual={() => {
+              onOpenManual={(tab = 'raw') => {
                 setShowScanModal(false);
-                setManualInitialTab('raw');
+                setManualInitialTab(tab);
                 setShowManualModal(true);
               }}
               onSavedToFridge={() => {
                 setShowScanModal(false);
+                refreshAllData();
+                setCurrentTab('pantry');
+              }}
+            />
+          </div>
+        )}
+
+        {/* Modal: Catat Stok Manual - Bahan Mentah & Masakan Sisa (Figma 29:2621, 58:132) */}
+        {showManualModal && (
+          <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
+            <ManualInputModal
+              initialTab={manualInitialTab}
+              onClose={() => setShowManualModal(false)}
+              onSavedToFridge={() => {
+                setShowManualModal(false);
+                refreshAllData();
+                setCurrentTab('pantry');
+              }}
+            />
+          </div>
+        )}
+
+        {/* Modal: Rescue Resep & Konfirmasi Masakan Selesai (Figma 31:3285, 59:518) */}
+        {showRecipeModal && (
+          <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
+            <RecipeModal
+              isOpen={showRecipeModal}
+              expiringItems={recipeTargetItems}
+              onClose={() => setShowRecipeModal(false)}
+              onOpenCompostGuide={() => {
+                setShowRecipeModal(false);
+                handleOpenCompostModal(recipeTargetItems?.[0] || null);
+              }}
+              onSuccess={() => {
+                setShowRecipeModal(false);
                 refreshAllData();
               }}
             />
           </div>
         )}
 
-        {showManualModal && (
+        {/* Modal: Alih ke Kompos & Konfirmasi Simpan ke Wadah (Figma 32:3286, 61:514) */}
+        {showCompostModal && (
           <div className="fixed inset-0 z-50 bg-[#f8fff4] overflow-y-auto max-w-[402px] mx-auto shadow-2xl">
-            <ManualInputModal
-              isOpen={showManualModal}
-              initialTab={manualInitialTab}
-              onClose={() => setShowManualModal(false)}
-              onItemAdded={() => {
-                setShowManualModal(false);
+            <CompostModal
+              isOpen={showCompostModal}
+              foodItem={compostTargetFood}
+              onClose={() => setShowCompostModal(false)}
+              onSuccess={() => {
+                setShowCompostModal(false);
                 refreshAllData();
+                setCurrentTab('compost');
               }}
             />
           </div>

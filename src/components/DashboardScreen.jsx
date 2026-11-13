@@ -73,6 +73,10 @@ export default function DashboardScreen({
   };
 
   const handleMoveToCompost = (food) => {
+    if (onOpenCompostAi) {
+      onOpenCompostAi(food);
+      return;
+    }
     store.addFoodToCompost(food, activeBatch?.id || null);
     try {
       confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 } });
@@ -251,7 +255,7 @@ export default function DashboardScreen({
           </p>
           <div>
             <button
-              onClick={onOpenRescueAi}
+              onClick={() => onOpenRescueAi?.(foodItems.filter(f => f.status === 'warning'))}
               className="px-4 py-1.5 rounded-full bg-[#b45309] hover:bg-[#92400e] text-white text-[13px] font-bold shadow-xs active:scale-95 transition-all"
             >
               Rescue Masakan
@@ -423,7 +427,7 @@ export default function DashboardScreen({
                     ) : isWarning ? (
                       <>
                         <button
-                          onClick={onOpenRescueAi}
+                          onClick={() => onOpenRescueAi?.([food])}
                           className="bg-[#b45309] hover:bg-[#92400e] text-white text-[10px] font-bold px-3 py-1 rounded-[14px] active:scale-95 transition-all text-center flex-1"
                         >
                           Rescue Resep

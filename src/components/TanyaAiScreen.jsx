@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as store from '../services/storageService.js';
-import * as gemini from '../services/geminiService.js';
+import { fetchFromBackend } from '../config/api.js';
 
 // Assets from Figma
 import landingIcon from '../assets/figma/landing_icon.svg';
@@ -15,7 +14,8 @@ export default function TanyaAiScreen({
   foodItems = [],
   onOpenRiwayat,
   onOpenScan,
-  onOpenManual
+  onOpenManual,
+  onHistoryUpdated
 }) {
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'riwayat'
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +72,11 @@ export default function TanyaAiScreen({
     setChatMessages([userMsg]);
 
     try {
-      const recipe = await gemini.generateRescueRecipe(targetItems);
+      const apiRes = await fetchFromBackend('/ai/rescue-recipe', {
+        method: 'POST',
+        body: JSON.stringify({ items: targetItems })
+      });
+      const recipe = apiRes?.recipe || apiRes;
       const aiMsg = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
@@ -81,18 +85,7 @@ export default function TanyaAiScreen({
       };
 
       setChatMessages([userMsg, aiMsg]);
-
-      // Automatically persist to storage for Riwayat Chat
-      store.addAiHistoryEntry({
-        type: 'recipe',
-        badge: 'Rescue Resep',
-        title: recipe.title || 'Sup Bening Gurih Kilat',
-        summary: recipe.introText || 'Resep penyelamat bahan makanan hampir basi siap dalam 12 menit.',
-        prompt: userMsg.text,
-        tags: targetItems.map(i => i.name),
-        readOnly: true,
-        data: recipe
-      });
+      onHistoryUpdated?.();
     } catch (err) {
       console.error('Error generate rescue recipe:', err);
     } finally {
@@ -136,7 +129,14 @@ export default function TanyaAiScreen({
     setChatMessages([userMsg]);
 
     try {
-      const guide = await gemini.analyzeCompostAction(targetItem, user?.householdType || 'house');
+      const apiRes = await fetchFromBackend('/ai/compost-guide', {
+        method: 'POST',
+        body: JSON.stringify({
+          foodName: targetItem.name,
+          householdType: user?.householdType || 'house'
+        })
+      });
+      const guide = apiRes?.guide || apiRes?.analysis || apiRes;
       const aiMsg = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
@@ -145,18 +145,7 @@ export default function TanyaAiScreen({
       };
 
       setChatMessages([userMsg, aiMsg]);
-
-      // Automatically persist to storage for Riwayat Chat
-      store.addAiHistoryEntry({
-        type: 'compost',
-        badge: 'Kompos',
-        title: `Olah ${targetItem.name} jadi kompos`,
-        summary: guide.why || 'Panduan praktis mengolah bahan basi untuk wadah kompos rumah tangga.',
-        prompt: userMsg.text,
-        tags: [targetItem.name],
-        readOnly: true,
-        data: guide
-      });
+      onHistoryUpdated?.();
     } catch (err) {
       console.error('Error analyze compost:', err);
     } finally {
@@ -201,34 +190,27 @@ export default function TanyaAiScreen({
       const isCompost = /kompos|basi|busuk|tanah|biopori|takakura|bokashi|pupuk/i.test(text);
 
       if (isCompost) {
-        const guide = await gemini.analyzeCompostAction({ name: text }, user?.householdType || 'house');
+        const apiRes = await fetchFromBackend('/ai/compost-guide', {
+          method: 'POST',
+          body: JSON.stringify({
+            foodName: text,
+            householdType: user?.householdType || 'house'
+          })
+        });
+        const guide = apiRes?.guide || apiRes?.analysis || apiRes;
         const aiMsg = { id: `ai-${Date.now()}`, sender: 'ai', type: 'compost', data: guide };
         setChatMessages(prev => [...prev, aiMsg]);
-        store.addAiHistoryEntry({
-          type: 'compost',
-          badge: 'Kompos',
-          title: `Tanya Kompos: ${text.slice(0, 25)}`,
-          summary: guide.why,
-          prompt: text,
-          tags: ['Kompos'],
-          readOnly: true,
-          data: guide
-        });
+        onHistoryUpdated?.();
       } else {
         const availableContext = foodItems.length > 0 ? foodItems : [{ name: text }];
-        const recipe = await gemini.generateRescueRecipe(availableContext);
+        const apiRes = await fetchFromBackend('/ai/rescue-recipe', {
+          method: 'POST',
+          body: JSON.stringify({ items: availableContext })
+        });
+        const recipe = apiRes?.recipe || apiRes;
         const aiMsg = { id: `ai-${Date.now()}`, sender: 'ai', type: 'recipe', data: recipe };
         setChatMessages(prev => [...prev, aiMsg]);
-        store.addAiHistoryEntry({
-          type: 'recipe',
-          badge: 'Rescue Resep',
-          title: recipe.title || 'Resep Kreasi EatWise',
-          summary: recipe.introText,
-          prompt: text,
-          tags: [text.slice(0, 15)],
-          readOnly: true,
-          data: recipe
-        });
+        onHistoryUpdated?.();
       }
     } catch (err) {
       console.error('Error in custom chat:', err);
