@@ -803,26 +803,26 @@ export default function ScanModal({
               </div>
             </div>
 
-            {/* NON-FOOD Bounding Box */}
-            <div className="absolute bg-[rgba(186,26,26,0.15)] border-2 border-[rgba(186,26,26,0.7)] bottom-[24px] flex h-[28px] items-center justify-center p-[2px] right-[24px] rounded-[4px] w-[80px]">
-              <div className="bg-[#ba1a1a] rounded-[2px] px-[4px]">
-                <span className="font-['Manrope'] font-bold text-white text-[9px] leading-[13.5px]">
-                  NON-FOOD
+            {/* Conditional Non-Food Badge (hanya tampil jika benar-benar ada item non-makanan) */}
+            {ignoredItems.length > 0 && (
+              <div className="absolute bg-[#ba1a1a]/90 bottom-[14px] right-[12px] px-2.5 py-1 rounded-full shadow-xs">
+                <span className="font-['Manrope'] font-bold text-white text-[10px]">
+                  {ignoredItems.length} Non-Makanan Dipisah
                 </span>
               </div>
-            </div>
+            )}
 
             {/* Top Status Pill: AI Processing */}
             <div className="absolute flex items-center justify-between left-[12px] right-[12px] top-[12px]">
               <div className="backdrop-blur-[12px] bg-[rgba(17,28,45,0.8)] flex gap-[6px] items-center px-[10px] py-[4px] rounded-full">
                 <div className="bg-[#6bff8f] rounded-full size-[8px]" />
-                <span className="font-['Manrope'] font-semibold text-[#f9f9ff] text-[12px] leading-[16px] tracking-[0.3px]">
-                  Gemini 1.5 Flash Vision
+                <span className="font-['Manrope'] font-semibold text-[#f9f9ff] text-[11.5px] leading-[16px]">
+                  EatWise Vision AI
                 </span>
               </div>
-              <div className="bg-[rgba(255,255,255,0.9)] px-[8px] py-[2px] rounded-full">
-                <span className="font-['Manrope'] font-semibold text-[#111c2d] text-[10px] leading-[14px] tracking-[0.4px]">
-                  Presisi 98.4%
+              <div className="bg-[rgba(255,255,255,0.92)] px-[8px] py-[2px] rounded-full">
+                <span className="font-['Manrope'] font-semibold text-[#111c2d] text-[10px] leading-[14px]">
+                  {foodItems.length} Bahan Terdeteksi
                 </span>
               </div>
             </div>
@@ -831,13 +831,10 @@ export default function ScanModal({
             <div className="absolute bottom-[12px] flex items-center justify-between left-[12px] right-[12px]">
               <div className="flex gap-[6px] items-center">
                 <img alt="" className="w-[13.33px] h-[14.67px]" src={imgFileMetaIcon} />
-                <span className="font-['Manrope'] font-bold text-[#f9f9ff] text-[10px] leading-[14px] tracking-[0.4px]">
-                  {uploadedFileName}
+                <span className="font-['Manrope'] font-bold text-[#f9f9ff] text-[10px] leading-[14px]">
+                  {uploadedFileName === 'Foto_Struk_Kamera.jpg' ? 'Hasil Foto Kamera' : uploadedFileName}
                 </span>
               </div>
-              <span className="font-['Manrope'] font-bold text-[#cfdaf2] text-[10px] leading-[14px] tracking-[0.4px]">
-                {foodItems.length + ignoredItems.length} Item Terbaca
-              </span>
             </div>
           </div>
 

@@ -76,18 +76,28 @@ export async function scanReceiptOrFoodImage(base64Data, mimeType = "image/jpeg"
 
   const cleanBase64 = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
 
-  const prompt = `Analisis gambar struk belanja atau makanan ini.
+  const prompt = `Analisis gambar struk belanja atau foto makanan/isi kulkas ini dengan presisi.
 Pisahkan antara:
-1. "foodItems": Semua makanan & minuman yang bisa dikonsumsi. Rapikan namanya (contoh: "S/ROTI KRIM KEJU 72G" -> "Sari Roti Krim Keju (72g)", "CIMORY MIX BERRY 225" -> "Cimory Yogurt Mix Berry (225ml)"). Tentukan estimasi umur simpan ("expiryDays") dalam hari, berat ("weightKg"), dan lokasi simpan ("storageLabel", misal "4 pcs · Chiller").
-2. "ignoredItems": Barang non-makanan seperti kantong plastik, sabun, tisu, deterjen, baterai, diskon, dll (contoh: "PLASTIK SDG" masuk ke ignoredItems dengan tag "PLASTIK" dan reason "Non-makanan").
+1. "foodItems": Semua makanan & minuman yang bisa dikonsumsi. Rapikan namanya sesuai produk yang terlihat di gambar (contoh: "S/ROTI KRIM KEJU 72G" -> "Sari Roti Krim Keju (72g)", "CIMORY MIX BERRY 225" -> "Cimory Yogurt Mix Berry (225ml)").
+Pilih "category" yang PALING TEPAT dari daftar berikut:
+- "vegetable": sayur segar & buah segar (bayam, tomat, buah naga, jambu, apel)
+- "meat": daging, ikan, ayam, telur, seafood
+- "plant_protein": tahu, tempe, kacang-kacangan
+- "carb": bahan pokok karbohidrat & kering (beras, mie instan, roti, tepung, pasta)
+- "spice": bumbu dapur & minyak (minyak goreng, gula pasir, garam, kecap, saus, bawang)
+- "snack": camilan, minuman kemasan, susu, yogurt, teh, kopi, makanan ringan
+- "leftover": masakan matang / siap santap / sisa makanan
+PENTING: "weightKg" harus dalam KILOGRAM sebagai angka desimal (contoh: 0.25 untuk 250g/250ml, 1.0 untuk 1kg/1L, 2.0 untuk 2L), JANGAN tulis gram/ml seperti 1600!
+
+2. "ignoredItems": Barang non-makanan seperti kantong plastik, sabun, tisu, deterjen, baterai, pasta gigi, diskon, dll. Jika TIDAK ada barang non-makanan di gambar, kembalikan array kosong [].
 
 Balas HANYA dalam JSON valid dengan struktur persis ini:
 {
   "foodItems": [
     {
       "name": "Nama Makanan",
-      "category": "vegetable|meat|leftover",
-      "storage": "chiller",
+      "category": "vegetable|meat|plant_protein|carb|spice|snack|leftover",
+      "storage": "chiller|freezer|room",
       "storageLabel": "Jumlah · Lokasi Simpan",
       "quantityText": "Jumlah/Berat",
       "expiryDays": 5,
@@ -109,7 +119,18 @@ Balas HANYA dalam JSON valid dengan struktur persis ini:
     mockScanData,
     10000
   );
-  return parsed?.foodItems ? parsed : mockScanData;
+  if (parsed?.foodItems) {
+    parsed.foodItems = parsed.foodItems.map((item) => {
+      let w = Number(item.weightKg || 0.3);
+      if (w > 25) w = Math.round((w / 1000) * 100) / 100;
+      return {
+        ...item,
+        weightKg: Math.min(25, Math.max(0.05, w))
+      };
+    });
+    return parsed;
+  }
+  return mockScanData;
 }
 
 /**
@@ -120,26 +141,52 @@ export async function generateRescueRecipe(expiringItems = []) {
   const firstItem = items[0]?.name || "Bayam Hijau";
   const secondItem = items[1]?.name || "Telur Ayam";
 
+  const hasLeftover = items.some((i) => i.stockType === 'leftover' || i.category === 'leftover');
+  const itemDescriptions = items
+    .map((i) => {
+      const kind =
+        i.stockType === 'leftover' || i.category === 'leftover'
+          ? 'SUDAH MATANG / Masakan Sisa'
+          : i.category === 'snack'
+            ? 'Camilan / Siap Saji'
+            : 'Bahan Mentah';
+      return `${i.name} (${kind})`;
+    })
+    .join(', ');
+
   const fallbackRecipe = {
     introText: items.length > 1
-      ? `Siap! ${firstItem} tinggal ${items[0]?.expiryDays || 1} hari, jadi yuk dimasak sekarang bareng ${secondItem}.`
-      : `Siap! ${firstItem} tinggal ${items[0]?.expiryDays || 1} hari, yuk dimasak sekarang.`,
-    title: items.some(i => i.name.toLowerCase().includes("bayam"))
-      ? "Sup Bening Bayam Telur Gurih"
-      : `Tumis Kilat ${firstItem} Bawang Putih`,
-    cookingTimeMinutes: 12,
+      ? `Siap! ${firstItem} tinggal ${items[0]?.expiryDays || 1} hari, yuk segera olah bareng ${secondItem}.`
+      : `Siap! ${firstItem} tinggal ${items[0]?.expiryDays || 1} hari, yuk segera dihabiskan.`,
+    title: hasLeftover
+      ? `Hangatkan & Olah Ulang ${firstItem}`
+      : items.some(i => i.name.toLowerCase().includes("bayam"))
+        ? "Sup Bening Bayam Telur Gurih"
+        : `Tumis Kilat ${firstItem} Bawang Putih`,
+    cookingTimeMinutes: hasLeftover ? 7 : 12,
     difficulty: "Sangat Mudah",
     servings: 2,
     matchedItems: items.map(i => i.name),
-    additionalIngredients: ["Bumbu dapur dasar (bawang putih, garam, air)"],
-    steps: [
-      "Rebus air bersama irisan bawang putih hingga mendidih.",
-      "Kocok telur, tuang perlahan ke dalam kuah sambil diaduk membentuk serabut.",
-      "Masukkan bayam, masak sebentar selama 2 menit, angkat dan sajikan."
-    ]
+    additionalIngredients: hasLeftover
+      ? ["Sedikit air / minyak olesan (untuk reheat)", "Pelengkap opsional (saus / bawang goreng)"]
+      : ["Bumbu dapur dasar (bawang putih, garam, air)"],
+    steps: hasLeftover
+      ? [
+          `Keluarkan ${firstItem} dari kulkas dan diamkan 2 menit agar tidak terlalu dingin.`,
+          `Panaskan ulang dengan teflon bertutup api kecil, kukusan, atau air fryer selama 3–5 menit hingga hangat merata (jangan terlalu lama agar tidak kering).`,
+          `Sajikan selagi hangat dengan taburan bawang goreng atau saus favorit agar cepat habis.`
+        ]
+      : [
+          "Rebus air bersama irisan bawang putih hingga mendidih.",
+          "Kocok telur, tuang perlahan ke dalam kuah sambil diaduk membentuk serabut.",
+          "Masukkan bayam, masak sebentar selama 2 menit, angkat dan sajikan."
+        ]
   };
 
-  const prompt = `Buat 1 resep kilat (10-15 menit, 3 langkah singkat) dari bahan hampir basi ini: ${items.map(i => i.name).join(", ")}.
+  const prompt = `Buat 1 panduan penyelamatan makanan kilat (5-15 menit, 3 langkah singkat) dari bahan hampir basi ini: ${itemDescriptions}.
+PENTING:
+- Jika bahan berstatus "SUDAH MATANG / Masakan Sisa", JANGAN suruh memasak ulang dari mentah/beku! Berikan cara menghangatkan ulang yang aman (kukus/teflon/air fryer) atau ide remix sederhana (misal jadi isian/topping/nasi goreng) agar cepat habis dan tetap lezat.
+- Jika bahan berstatus "Bahan Mentah", berikan resep masakan kilat.
 Balas HANYA JSON:
 {
   "introText": "Siap! ...",

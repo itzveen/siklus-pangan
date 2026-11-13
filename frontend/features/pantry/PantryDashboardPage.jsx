@@ -64,7 +64,15 @@ export default function DashboardScreen({
     },
     {
       id: 'meat',
-      label: `Lauk Hewani (${foodItems.filter(f => f.category === 'meat' || f.category === 'plant_protein').length})`
+      label: `Lauk (${foodItems.filter(f => f.category === 'meat' || f.category === 'plant_protein').length})`
+    },
+    {
+      id: 'staple',
+      label: `Bahan Pokok (${foodItems.filter(f => f.category === 'carb' || f.category === 'spice').length})`
+    },
+    {
+      id: 'snack',
+      label: `Camilan (${foodItems.filter(f => f.category === 'snack').length})`
     },
     {
       id: 'leftover',
@@ -75,6 +83,7 @@ export default function DashboardScreen({
   const filteredFoods = foodItems.filter(item => {
     if (activeCategory === 'all') return true;
     if (activeCategory === 'meat') return item.category === 'meat' || item.category === 'plant_protein';
+    if (activeCategory === 'staple') return item.category === 'carb' || item.category === 'spice';
     return item.category === activeCategory;
   });
 
