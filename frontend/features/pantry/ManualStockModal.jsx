@@ -70,39 +70,41 @@ export default function ManualInputModal({
   const [rawStorage, setRawStorage] = useState('chiller');
   const [rawNotes, setRawNotes] = useState('');
 
+  const formatIsoToIdDate = (iso) => {
+    if (!iso) return '';
+    const [yyyy, mm, dd] = iso.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const mIdx = Math.max(0, Math.min(11, parseInt(mm, 10) - 1));
+    return `${parseInt(dd, 10)} ${months[mIdx]} ${yyyy}`;
+  };
+
+  const todayIso = new Date().toISOString().split('T')[0];
+
   // Leftover Food State (58:132)
   const [leftoverName, setLeftoverName] = useState('');
+  const [leftoverError, setLeftoverError] = useState('');
+  const leftoverNameInputRef = useRef(null);
   const [leftoverSubCat, setLeftoverSubCat] = useState('Sayur & sup');
   const [leftoverQuantity, setLeftoverQuantity] = useState(1);
   const [leftoverUnit, setLeftoverUnit] = useState('porsi');
-  const [cookedDateIso, setCookedDateIso] = useState('2026-11-12');
-  const [cookedDateText, setCookedDateText] = useState('12 Nov 2026');
-  const [cookedTimeIso, setCookedTimeIso] = useState('12:30');
-  const [cookedTimeText, setCookedTimeText] = useState('12.30');
+  const [cookedDateIso, setCookedDateIso] = useState(todayIso);
+  const [cookedDateText, setCookedDateText] = useState(() => formatIsoToIdDate(todayIso));
+  const [cookedTimeIso, setCookedTimeIso] = useState('10:00');
+  const [cookedTimeText, setCookedTimeText] = useState('10.00');
   const datePickerRef = useRef(null);
   const timePickerRef = useRef(null);
+
+  const isCookedYesterdayOrOlder = cookedDateIso < todayIso;
 
   const handleDateChange = (e) => {
     const val = e.target.value;
     setCookedDateIso(val);
     if (!val) return;
-    const [yyyy, mm, dd] = val.split('-');
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des'
-    ];
-    const mIdx = Math.max(0, Math.min(11, parseInt(mm, 10) - 1));
-    setCookedDateText(`${parseInt(dd, 10)} ${months[mIdx]} ${yyyy}`);
+    setCookedDateText(formatIsoToIdDate(val));
+    if (val < todayIso) {
+      setCustomExpiryMode(false);
+      setLeftoverExpiryDays(1);
+    }
   };
 
   const handleTimeChange = (e) => {
@@ -166,11 +168,17 @@ export default function ManualInputModal({
 
   const handleSaveLeftover = async () => {
     const finalName = leftoverName.trim();
-    if (!finalName) return;
+    if (!finalName) {
+      setLeftoverError('Isi nama makanan terlebih dahulu sebelum menyimpan.');
+      leftoverNameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      leftoverNameInputRef.current?.focus();
+      return;
+    }
+    setLeftoverError('');
     const payload = {
       stockType: 'leftover',
       name: finalName,
-      category: 'leftover',
+      category: leftoverSubCat === 'Camilan' ? 'snack' : 'leftover',
       categoryLabel: leftoverSubCat,
       quantity: leftoverQuantity,
       unit: leftoverUnit,
@@ -540,15 +548,26 @@ export default function ManualInputModal({
               <label className="font-normal leading-[16px] text-[#111827] text-[12px] tracking-[0.3px]">
                 Nama masakan
               </label>
-              <div className="bg-white border border-[#e5e7eb] flex h-[50px] items-center px-[16px] rounded-[16px] w-full">
+              <div
+                className={`bg-white border flex h-[50px] items-center px-[16px] rounded-[16px] w-full transition ${
+                  leftoverError ? 'border-[#ef4444]' : 'border-[#e5e7eb] focus-within:border-[#0e7f3d]'
+                }`}
+              >
                 <input
+                  ref={leftoverNameInputRef}
                   type="text"
                   value={leftoverName}
-                  onChange={(e) => setLeftoverName(e.target.value)}
-                  placeholder="Sayur sop"
-                  className="w-full bg-transparent outline-none font-normal text-[#111827] text-[14px]"
+                  onChange={(e) => {
+                    setLeftoverName(e.target.value);
+                    if (leftoverError) setLeftoverError('');
+                  }}
+                  placeholder="cth. Sayur sop / Dimsum"
+                  className="w-full bg-transparent outline-none font-normal text-[#111827] placeholder-[#9ca3af] text-[14px]"
                 />
               </div>
+              {leftoverError && (
+                <p className="text-[11.5px] font-medium text-[#dc2626]">{leftoverError}</p>
+              )}
             </div>
 
             {/* Kategori masakan */}
@@ -792,11 +811,18 @@ export default function ManualInputModal({
               )}
 
               {/* Catatan perkiraan */}
-              <div className="bg-[#eff5f0] border border-[#dce8df] flex gap-[8px] items-center px-[12px] py-[10px] rounded-[12px] w-full">
+              <div
+                className={`border flex gap-[8px] items-center px-[12px] py-[10px] rounded-[12px] w-full ${
+                  isCookedYesterdayOrOlder
+                    ? 'bg-[#fef3c7]/70 border-[#f59e0b]/40'
+                    : 'bg-[#eff5f0] border-[#dce8df]'
+                }`}
+              >
                 <img alt="" className="size-[15px] shrink-0" src={imgInfo} />
                 <p className="flex-1 font-normal leading-[16px] text-[#4b5563] text-[11px]">
-                  Masakan sisa di {leftoverStorageLabelText.toLowerCase()} umumnya baik dikonsumsi
-                  dalam 1–2 hari.
+                  {isCookedYesterdayOrOlder
+                    ? 'Karena dimasak sejak semalam/sebelumnya, disarankan masa simpannya 1 hari saja agar tetap aman dikonsumsi.'
+                    : `Masakan sisa di ${leftoverStorageLabelText.toLowerCase()} umumnya baik dikonsumsi dalam 1–2 hari.`}
                 </p>
               </div>
             </div>
@@ -826,7 +852,7 @@ export default function ManualInputModal({
               <div className="bg-white border border-[#e5e7eb] flex flex-col gap-[10px] items-start p-[16px] rounded-[16px] w-full">
                 <div className="flex items-center justify-between gap-2 w-full">
                   <span className="font-bold leading-[24px] text-[#111827] text-[16px]">
-                    {leftoverName.trim() || 'Sayur sop'}
+                    {leftoverName.trim() || 'Nama makanan belum diisi'}
                   </span>
                   <div className="bg-[#dcfce7] px-[10px] py-[3px] rounded-full shrink-0">
                     <span className="font-normal leading-[16px] text-[#0e5c2f] text-[11px]">

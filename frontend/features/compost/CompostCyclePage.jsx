@@ -235,7 +235,7 @@ export default function CompostPage({
 
     return (
       <div
-        className="bg-[#f8fff4] flex flex-col gap-[16px] items-start overflow-x-hidden px-[26px] py-[30px] relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif]"
+        className="bg-[#f8fff4] flex flex-col gap-[16px] items-start overflow-x-hidden px-[26px] pt-[30px] pb-[130px] relative w-full max-w-[402px] min-h-screen mx-auto font-['Poppins',sans-serif]"
         data-node-id="55:63"
         data-name="Detail Riwayat Panen"
       >

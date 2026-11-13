@@ -56,28 +56,52 @@ const CATEGORY_MAP = {
   vegetable: { label: 'Sayur & Buah', icon: '🥬' },
   meat: { label: 'Lauk Hewani', icon: '🍗' },
   plant_protein: { label: 'Lauk Nabati', icon: '🧈' },
-  carb: { label: 'Karbohidrat', icon: '🍚' },
-  spice: { label: 'Bumbu', icon: '🧄' },
+  carb: { label: 'Bahan Pokok', icon: '🍚' },
+  spice: { label: 'Bumbu & Minyak', icon: '🧄' },
+  snack: { label: 'Camilan & Minuman', icon: '🍪' },
   leftover: { label: 'Masakan Sisa', icon: '🍲' },
   other: { label: 'Lainnya', icon: '📦' }
 };
 
+function normalizeWeightKg(rawWeight) {
+  let w = Number(rawWeight || 0.3);
+  if (!Number.isFinite(w) || w <= 0) return 0.3;
+  if (w > 25) w = Math.round((w / 1000) * 100) / 100;
+  return Math.min(25, Math.max(0.05, Math.round(w * 100) / 100));
+}
+
+function inferFoodCategory(item) {
+  const rawCat = item.category;
+  const name = String(item.name || '').toLowerCase();
+  if (item.stockType === 'leftover') return 'leftover';
+  if (/(mie\s*instan|indomie|beras|tepung|roti|pasta|bihun|oat)/.test(name)) return 'carb';
+  if (/(minyak\s*goreng|gula\s*pasir|garam|kecap|saus|bumbu|merica|kaldu)/.test(name)) return 'spice';
+  if (/(susu|ultra\s*milk|cimory|yogurt|teh\s*celup|kopi|cafela|udang\s*keju|camilan|snack|biskuit|keripik|cokelat)/.test(name)) return 'snack';
+  if (/(telur|ayam|daging|ikan|udang|sosis|nugget|bakso|lele|tuna|salmon)/.test(name)) return 'meat';
+  if (/(tahu|tempe|kacang)/.test(name)) return 'plant_protein';
+  if (rawCat && CATEGORY_MAP[rawCat]) return rawCat;
+  return 'vegetable';
+}
+
 function buildFoodRecord(item, idSuffix = '') {
   const expiry = Number(item.expiryDays ?? (item.stockType === 'leftover' ? 2 : 3));
-  const catInfo = CATEGORY_MAP[item.category] || { label: 'Bahan Segar', icon: '🥗' };
+  const resolvedCategory = inferFoodCategory(item);
+  const catInfo = CATEGORY_MAP[resolvedCategory] || { label: 'Bahan Segar', icon: '🥗' };
   const quantity = Number(item.quantity || 1);
   const unit = item.unit || (item.stockType === 'leftover' ? 'porsi' : 'ikat');
+  const safeWeightKg = normalizeWeightKg(item.weightKg);
 
   return {
     id: `food-${Date.now()}${idSuffix}`,
     addedAt: new Date().toISOString().split('T')[0],
     status: expiry <= 0 ? 'spoiled' : expiry <= 2 ? 'warning' : 'safe',
-    weightKg: Number(item.weightKg || 0.3),
     maxExpiryDays: Math.max(expiry, 7),
-    categoryLabel: item.categoryLabel || catInfo.label,
     quantityText: item.quantityText || `${quantity} ${unit}`,
     icon: item.icon || catInfo.icon,
     ...item,
+    category: resolvedCategory,
+    categoryLabel: item.categoryLabel && resolvedCategory === item.category ? item.categoryLabel : catInfo.label,
+    weightKg: safeWeightKg,
     expiryDays: expiry
   };
 }
@@ -348,7 +372,32 @@ export function addActivityNotification({ type = 'info', title, message, group =
 
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try {
-      new Notification(title, { body: message });
+      const AudioCtx = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        [587.33, 880].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.12);
+          gain.gain.setValueAtTime(0.08, now + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.2);
+        });
+      }
+      const notif = new Notification(`EatWise · ${title}`, {
+        body: message,
+        tag: `eatwise-${Date.now()}`,
+        silent: false
+      });
+      notif.onclick = () => {
+        if (typeof window !== 'undefined') window.focus();
+        notif.close();
+      };
     } catch {
       // Abaikan jika browser memblokir konstruktor Notification
     }
