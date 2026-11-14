@@ -10,7 +10,10 @@ import {
   INITIAL_USER_PROFILE,
   INITIAL_AI_HISTORY,
   INITIAL_NOTIFICATIONS
-} from './data/dummyData.js';
+} from '../database/seeds/dummyData.js';
+import { createEmptyDb, createDemoDb } from './models/dbModel.js';
+import { sendJson, parseBody } from './middleware/httpMiddleware.js';
+import { API_ENDPOINTS } from './routes/apiRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,30 +40,6 @@ const MODELS = [
   'gemini-3.6-flash',
   'gemini-3.1-flash-lite'
 ];
-
-function createEmptyDb() {
-  return {
-    foods: [],
-    batches: [],
-    harvests: [],
-    impact: { rescuedFoodKg: 0, compostedFoodKg: 0, co2ePreventedKg: 0 },
-    profile: { name: 'Pengguna Baru', email: '', avatar: '', isLoggedIn: false },
-    aiHistory: [],
-    notifications: []
-  };
-}
-
-function createDemoDb() {
-  return {
-    foods: structuredClone(INITIAL_FOOD_ITEMS),
-    batches: structuredClone(INITIAL_COMPOST_BATCHES),
-    harvests: structuredClone(INITIAL_HARVEST_HISTORY),
-    impact: structuredClone(INITIAL_IMPACT_STATS),
-    profile: structuredClone(INITIAL_USER_PROFILE),
-    aiHistory: structuredClone(INITIAL_AI_HISTORY),
-    notifications: structuredClone(INITIAL_NOTIFICATIONS)
-  };
-}
 
 // In-memory database untuk REST API (mulai kosong tanpa dummy; bisa di-reset via POST /api/reset)
 let db = createEmptyDb();
@@ -110,34 +89,6 @@ async function callGeminiJson(parts, fallback, timeoutPerModelMs = 6500) {
   return fallback;
 }
 
-function sendJson(res, status, payload) {
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-  });
-  const body = (payload && typeof payload === 'object' && !Array.isArray(payload) && status < 400 && !('status' in payload))
-    ? { status: 'ok', ...payload }
-    : payload;
-  res.end(JSON.stringify(body, null, 2));
-}
-
-function parseBody(req) {
-  return new Promise((resolve) => {
-    let raw = '';
-    req.on('data', chunk => { raw += chunk; });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try {
-        resolve(JSON.parse(raw));
-      } catch {
-        resolve({});
-      }
-    });
-  });
-}
-
 export async function handleRequest(req, res) {
   if (req.method === 'OPTIONS') {
     return sendJson(res, 200, { ok: true });
@@ -154,28 +105,7 @@ export async function handleRequest(req, res) {
       service: 'EatWise (SiklusPangan) Backend API',
       version: '1.0.0',
       models: MODELS,
-      endpoints: [
-        'POST   /api/auth/google          -> Login dengan Google Credential / Profile',
-        'POST   /api/auth/logout          -> Logout user',
-        'GET    /api/profile              -> Ambil profil & preferensi hunian',
-        'PUT    /api/profile              -> Update preferensi hunian / jam notifikasi',
-        'GET    /api/foods                -> Ambil stok bahan makanan di kulkas + impact stats',
-        'POST   /api/foods                -> Tambah bahan manual (Bahan Mentah / Masakan Sisa)',
-        'POST   /api/foods/bulk           -> Simpan banyak bahan hasil AI Scan ke kulkas',
-        'PATCH  /api/foods/:id/cook       -> Tandai bahan selesai dimasak / habis',
-        'PATCH  /api/foods/:id/spoil      -> Tandai bahan basi / lewat waktu',
-        'POST   /api/ai/scan              -> AI Vision: Scan struk / foto kulkas (pisahkan makanan vs non-makanan)',
-        'POST   /api/ai/rescue-recipe     -> Tanya AI (Auto-Sent One-Shot): Resep penyelamat bahan kritis',
-        'POST   /api/ai/compost-guide     -> Tanya AI (Auto-Sent One-Shot): Panduan olah bahan basi jadi kompos',
-        'GET    /api/ai/history           -> Ambil riwayat percakapan Tanya AI',
-        'GET    /api/compost/batches      -> Ambil daftar batch kompos aktif & riwayat panen',
-        'POST   /api/compost/add-item     -> Simpan bahan basi ke wadah kompos (Batch aktif / baru)',
-        'POST   /api/compost/:id/lock     -> Kunci wadah kompos & mulai fase pematangan 14 hari',
-        'POST   /api/compost/:id/simulate -> Simulasi Demo: Lompat 14 hari pematangan',
-        'POST   /api/compost/:id/harvest  -> Catat hasil panen pupuk kompos (Kg)',
-        'GET    /api/notifications        -> Ambil daftar notifikasi bahan kritis & kompos',
-        'POST   /api/reset                -> Reset seluruh data ke kondisi awal demo'
-      ]
+      endpoints: API_ENDPOINTS
     });
   }
 

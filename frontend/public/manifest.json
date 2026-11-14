@@ -1,0 +1,10 @@
+{
+  "name": "EatWise - Smart Zero-Waste Pantry",
+  "short_name": "EatWise",
+  "description": "Aplikasi Manajemen Stok Makanan & Daur Ulang Kompos Cerdas Berbasis AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fff4",
+  "theme_color": "#0b6623",
+  "orientation": "portrait"
+}

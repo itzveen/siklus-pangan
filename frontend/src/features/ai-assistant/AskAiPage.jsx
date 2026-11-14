@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { fetchFromBackend } from '../../config/api.js';
-import * as store from '../../../backend/services/storageService.js';
+import * as store from '../../../../backend/services/storageService.js';
 import BrandLogo from '../../shared/components/BrandLogo.jsx';
 
 // Assets from Figma

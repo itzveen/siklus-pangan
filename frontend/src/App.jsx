@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import * as store from '../backend/services/storageService.js';
+import * as store from '../../backend/services/storageService.js';
 import { fetchFromBackend } from './config/api.js';
 
 // Auth

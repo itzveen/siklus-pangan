@@ -1,5 +1,5 @@
 import React from 'react';
-import * as store from '../../../backend/services/storageService.js';
+import * as store from '../../../../backend/services/storageService.js';
 import { fetchFromBackend } from '../../config/api.js';
 
 // Icons from Figma node 43:195

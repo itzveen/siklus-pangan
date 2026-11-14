@@ -1,9 +1,9 @@
-import * as store from '../../backend/services/storageService.js';
+import * as store from '../../../backend/services/storageService.js';
 import {
   scanReceiptOrFoodImage,
   generateRescueRecipe,
   analyzeCompostAction
-} from '../../backend/services/geminiService.js';
+} from '../../../backend/services/geminiService.js';
 
 /**
  * KONFIGURASI BASE URL API BACKEND
