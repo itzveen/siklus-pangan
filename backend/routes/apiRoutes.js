@@ -1,0 +1,22 @@
+export const API_ENDPOINTS = [
+  'POST   /api/auth/google          -> Login dengan Google Credential / Profile',
+  'POST   /api/auth/logout          -> Logout user',
+  'GET    /api/profile              -> Ambil profil & preferensi hunian',
+  'PUT    /api/profile              -> Update preferensi hunian / jam notifikasi',
+  'GET    /api/foods                -> Ambil stok bahan makanan di kulkas + impact stats',
+  'POST   /api/foods                -> Tambah bahan manual (Bahan Mentah / Masakan Sisa)',
+  'POST   /api/foods/bulk           -> Simpan banyak bahan hasil AI Scan ke kulkas',
+  'PATCH  /api/foods/:id/cook       -> Tandai bahan selesai dimasak / habis',
+  'PATCH  /api/foods/:id/spoil      -> Tandai bahan basi / lewat waktu',
+  'POST   /api/ai/scan              -> AI Vision: Scan struk / foto kulkas (pisahkan makanan vs non-makanan)',
+  'POST   /api/ai/rescue-recipe     -> Tanya AI (Auto-Sent One-Shot): Resep penyelamat bahan kritis',
+  'POST   /api/ai/compost-guide     -> Tanya AI (Auto-Sent One-Shot): Panduan olah bahan basi jadi kompos',
+  'GET    /api/ai/history           -> Ambil riwayat percakapan Tanya AI',
+  'GET    /api/compost/batches      -> Ambil daftar batch kompos aktif & riwayat panen',
+  'POST   /api/compost/add-item     -> Simpan bahan basi ke wadah kompos (Batch aktif / baru)',
+  'POST   /api/compost/:id/lock     -> Kunci wadah kompos & mulai fase pematangan 14 hari',
+  'POST   /api/compost/:id/simulate -> Simulasi Demo: Lompat 14 hari pematangan',
+  'POST   /api/compost/:id/harvest  -> Catat hasil panen pupuk kompos (Kg)',
+  'GET    /api/notifications        -> Ambil daftar notifikasi bahan kritis & kompos',
+  'POST   /api/reset                -> Reset seluruh data ke kondisi awal demo'
+];

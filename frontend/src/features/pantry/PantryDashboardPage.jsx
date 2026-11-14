@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import * as store from '../../../backend/services/storageService.js';
+import * as store from '../../../../backend/services/storageService.js';
 import { fetchFromBackend } from '../../config/api.js';
 
 // Assets from Figma node 16:523

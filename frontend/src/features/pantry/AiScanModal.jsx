@@ -451,7 +451,7 @@ export default function ScanModal({
                   Langkah 2 dari 3
                 </span>
                 <h2 className="font-bold text-[#0f172a] text-[18px] leading-[22.5px] tracking-[-0.45px]">
-                  Memindai Struk
+                  {scanMode === 'receipt' ? 'Memindai Struk' : 'Memindai Bahan Makanan'}
                 </h2>
               </div>
             </div>
@@ -516,9 +516,19 @@ export default function ScanModal({
           {/* StatusHeading */}
           <div className="flex flex-col gap-[4px] items-start mt-[20px]">
             <h2 className="font-extrabold text-[#111827] text-[20px] leading-[27.5px] tracking-[-0.5px]">
-              AI sedang memisahkan bahan
-              <br />
-              makanan...
+              {scanMode === 'receipt' ? (
+                <>
+                  AI sedang memisahkan bahan
+                  <br />
+                  makanan...
+                </>
+              ) : (
+                <>
+                  AI sedang mengenali bahan
+                  <br />
+                  makanan...
+                </>
+              )}
             </h2>
             <p className="font-normal text-[#64748b] text-[14px] leading-[21px] pb-[8px]">
               Biasanya hanya butuh beberapa detik.
@@ -540,7 +550,7 @@ export default function ScanModal({
               </div>
               <div className="flex flex-col">
                 <h3 className="font-bold text-[#0f172a] text-[14px] leading-[19.25px]">
-                  Membaca teks struk
+                  {scanMode === 'receipt' ? 'Membaca teks struk' : 'Membaca foto bahan makanan'}
                 </h3>
                 <span className="font-normal text-[#64748b] text-[12px] leading-[16px] mt-[2px]">
                   {scanComplete ? `${foodItems.length + ignoredItems.length} baris terbaca` : 'Memproses gambar...'}
@@ -562,7 +572,7 @@ export default function ScanModal({
               </div>
               <div className="flex flex-col">
                 <h3 className="font-bold text-[#0f172a] text-[14px] leading-[19.25px]">
-                  Mengenali item belanja
+                  {scanMode === 'receipt' ? 'Mengenali item belanja' : 'Mengenali bahan makanan'}
                 </h3>
                 <span className="font-normal text-[#64748b] text-[12px] leading-[16px] mt-[2px]">
                   {scanComplete ? `${foodItems.length + ignoredItems.length} item ditemukan` : 'Mengenali daftar item...'}
@@ -584,9 +594,19 @@ export default function ScanModal({
               </div>
               <div className="flex flex-col">
                 <h3 className="font-bold text-[#0f172a] text-[14px] leading-[19.25px]">
-                  Memisahkan makanan dan non-
-                  <br />
-                  makanan
+                  {scanMode === 'receipt' ? (
+                    <>
+                      Memisahkan makanan dan non-
+                      <br />
+                      makanan
+                    </>
+                  ) : (
+                    <>
+                      Mengelompokkan kategori
+                      <br />
+                      bahan makanan
+                    </>
+                  )}
                 </h3>
                 <span className="font-normal text-[#64748b] text-[12px] leading-[16px] mt-[2px]">
                   {scanComplete
@@ -676,12 +696,22 @@ export default function ScanModal({
           {/* MainErrorHeading */}
           <div className="flex flex-col gap-[8px] items-center pt-[12px] pb-[24px]">
             <h2 className="font-extrabold text-[#111827] text-[20px] leading-[30px] text-center tracking-[-0.5px]">
-              Struk belum terbaca jelas
+              {scanMode === 'receipt' ? 'Struk belum terbaca jelas' : 'Bahan makanan belum terbaca jelas'}
             </h2>
             <p className="font-medium text-[#4b5563] text-[13px] leading-[21.13px] text-center max-w-[310px]">
-              AI tidak menemukan cukup teks untuk
-              <br />
-              dipisahkan. Coba ambil foto ulang.
+              {scanMode === 'receipt' ? (
+                <>
+                  AI tidak menemukan cukup teks untuk
+                  <br />
+                  dipisahkan. Coba ambil foto ulang.
+                </>
+              ) : (
+                <>
+                  AI belum dapat mengenali bahan makanan
+                  <br />
+                  dengan jelas. Coba ambil foto ulang.
+                </>
+              )}
             </p>
           </div>
 
@@ -701,9 +731,19 @@ export default function ScanModal({
                     Cahaya cukup
                   </h4>
                   <p className="font-normal text-[#6b7280] text-[12px] leading-[16.5px] mt-[2px]">
-                    Hindari bayangan dan pantulan di atas
-                    <br />
-                    kertas struk.
+                    {scanMode === 'receipt' ? (
+                      <>
+                        Hindari bayangan dan pantulan di atas
+                        <br />
+                        kertas struk.
+                      </>
+                    ) : (
+                      <>
+                        Pastikan pencahayaan cukup ke arah
+                        <br />
+                        bahan makanan di kulkas.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -714,12 +754,22 @@ export default function ScanModal({
                 </div>
                 <div className="flex flex-col">
                   <h4 className="font-bold text-[#111827] text-[14px] leading-[17.5px]">
-                    Struk rata dan utuh
+                    {scanMode === 'receipt' ? 'Struk rata dan utuh' : 'Bahan terlihat jelas'}
                   </h4>
                   <p className="font-normal text-[#6b7280] text-[12px] leading-[16.5px] mt-[2px]">
-                    Rapikan lipatan dan pastikan seluruh
-                    <br />
-                    struk masuk bingkai.
+                    {scanMode === 'receipt' ? (
+                      <>
+                        Rapikan lipatan dan pastikan seluruh
+                        <br />
+                        struk masuk bingkai.
+                      </>
+                    ) : (
+                      <>
+                        Pastikan seluruh bahan makanan masuk
+                        <br />
+                        bingkai dan tidak tertumpuk.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -778,10 +828,12 @@ export default function ScanModal({
             </button>
             <div className="flex flex-col items-start">
               <h1 className="font-extrabold text-[#111827] text-[20px] leading-[25px] tracking-[-0.5px]">
-                Scan Struk Belanja
+                {scanMode === 'receipt' ? 'Scan Struk Belanja' : 'Scan Isi Kulkas'}
               </h1>
               <p className="font-medium text-[#6b7280] text-[13px] leading-[19.5px]">
-                AI memisahkan makanan dari non-makanan
+                {scanMode === 'receipt'
+                  ? 'AI memisahkan makanan dari non-makanan'
+                  : 'AI mengenali bahan makanan di kulkas'}
               </p>
             </div>
           </div>

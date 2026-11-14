@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import * as store from '../../../backend/services/storageService.js';
+import * as store from '../../../../backend/services/storageService.js';
 
 // Assets from Figma node 8:10 "Landing Screen"
 import landingIcon from '../../assets/figma/landing_icon.svg';
