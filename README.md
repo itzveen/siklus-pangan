@@ -7,12 +7,13 @@ Aplikasi *mobile web* pintar berbasis *Multimodal Generative AI* yang membantu r
 
 ## 👥 1. Identitas Tim & Daftar Anggota
 
-* **Nama Tim:** SiklusPangan (EatWise Team)
+* **Nama Tim:** Terserah (EatWise)
 * **Daftar Anggota:**
-  1. **Gurveender Jeet Kaur** — *Fullstack & AI Integration Engineer*
-  2. **Kamila Anisa** — *Frontend Engineer & Mobile UI Architecture*
-  3. **Rizky Laksmitha** — *UI/UX Designer & Product Researcher*
-  4. **Siti Nur Azizah** — *Backend Engineer & Quality Assurance*
+  1. **Gurveender Jeet Kaur** — *Backend Engineer*
+  2. **Kamila Anisa** — *Frontend Engineer*
+  3. **Rizky Laksmitha** — *Frontend Engineer*
+  4. **Siti Nur Azizah** — *UI/UX Designer*
+
 
 ---
 
